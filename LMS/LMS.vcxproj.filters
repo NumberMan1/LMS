@@ -40,5 +40,36 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SysManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BookManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BookReader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="SysManager.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="BookManager.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="BookReader.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="SysManager.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="BookManager.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="BookReader.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
 </Project>
