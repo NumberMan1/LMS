@@ -23,18 +23,25 @@ private:
         std::shared_ptr<BookManager>,
         std::shared_ptr<SysManager>
         > user_;
+    // 用于进行菜单界面到用户界面的设置
     template<typename T>
-    void ChangeWidgetOnMenu() {
+    void ChangeWidgetMenuToUser() {
         user_ = std::make_shared<T>();
         auto user_ptr = 
             std::get<std::shared_ptr<T>>(user_);
         this->close();
+        this->connect(user_ptr.get(), &T::BackBtnSignal,
+            this, &LMS::BackToMenu);
         user_ptr->show();
     }
 private slots:
-    void on_SysManagerBtn_clicked();
-    void on_BookManagerBtn_clicked();
-    void on_BookReaderBtn_clicked();
+    // 用于登录对应的用户界面
+    void on_sysManagerBtn_clicked();
+    void on_bookManagerBtn_clicked();
+    void on_bookReaderBtn_clicked();
+public slots:
+    // 其它界面到菜单界面的设置
+    void BackToMenu(QMainWindow *widget);
 };
 
 }

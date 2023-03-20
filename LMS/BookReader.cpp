@@ -12,3 +12,8 @@ BookReader::BookReader(QWidget *parent)
 BookReader::~BookReader() {
     qDebug() << "读者析构";
 }
+
+void BookReader::on_backBtn_clicked() {
+    emit BackBtnSignal(this);
+
+}

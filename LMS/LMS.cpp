@@ -11,14 +11,19 @@ LMS::~LMS() {
 
 }
 
-void LMS::on_SysManagerBtn_clicked() {
-    this->ChangeWidgetOnMenu<SysManager>();
+void LMS::on_sysManagerBtn_clicked() {
+    this->ChangeWidgetMenuToUser<SysManager>();
 }
 
-void LMS::on_BookManagerBtn_clicked() {
-    this->ChangeWidgetOnMenu<BookManager>();
+void LMS::on_bookManagerBtn_clicked() {
+    this->ChangeWidgetMenuToUser<BookManager>();
 }
 
-void LMS::on_BookReaderBtn_clicked() {
-    this->ChangeWidgetOnMenu<BookReader>();
+void LMS::on_bookReaderBtn_clicked() {
+    this->ChangeWidgetMenuToUser<BookReader>();
+}
+
+void LMS::BackToMenu(QMainWindow* widget) {
+    widget->close();
+    this->show();
 }

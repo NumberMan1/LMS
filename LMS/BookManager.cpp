@@ -12,3 +12,7 @@ BookManager::BookManager(QWidget *parent)
 BookManager::~BookManager() {
     qDebug() << "图书管理员析构";
 }
+
+void BookManager::on_backBtn_clicked() {
+    emit BackBtnSignal(this);
+}

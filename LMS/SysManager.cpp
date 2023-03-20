@@ -12,3 +12,8 @@ SysManager::SysManager(QWidget *parent)
 SysManager::~SysManager() {
     qDebug() << "系统管理员析构";
 }
+
+void SysManager::on_backBtn_clicked() {
+    emit BackBtnSignal(this);
+
+}

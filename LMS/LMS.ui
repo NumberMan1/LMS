@@ -14,7 +14,7 @@
    <string>LMS</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="QPushButton" name="SysManagerBtn">
+   <widget class="QPushButton" name="sysManagerBtn">
     <property name="geometry">
      <rect>
       <x>40</x>
@@ -27,7 +27,7 @@
      <string>以系统管理员登入</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="BookManagerBtn">
+   <widget class="QPushButton" name="bookManagerBtn">
     <property name="geometry">
      <rect>
       <x>220</x>
@@ -40,7 +40,7 @@
      <string>以图书管理员登入</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="BookReaderBtn">
+   <widget class="QPushButton" name="bookReaderBtn">
     <property name="geometry">
      <rect>
       <x>420</x>
