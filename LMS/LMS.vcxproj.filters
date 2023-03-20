@@ -21,55 +21,64 @@
       <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
       <Extensions>ts</Extensions>
     </Filter>
+    <Filter Include="Source Files\widget">
+      <UniqueIdentifier>{5eb57819-e790-4c05-881e-e108139d6f57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\widget">
+      <UniqueIdentifier>{3ce0c552-ba0c-4512-af2a-f6362fe45bc6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Form Files\widget">
+      <UniqueIdentifier>{dbadfeea-68e6-41d3-8e73-658180124864}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="LMS.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
-    <QtUic Include="LMS.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtMoc Include="LMS.hpp">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <ClCompile Include="LMS.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SysManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="BookManager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\widget</Filter>
     </ClCompile>
     <ClCompile Include="BookReader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\widget</Filter>
+    </ClCompile>
+    <ClCompile Include="LMS.cpp">
+      <Filter>Source Files\widget</Filter>
+    </ClCompile>
+    <ClCompile Include="SysManager.cpp">
+      <Filter>Source Files\widget</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="SysManager.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="BookManager.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\widget</Filter>
     </QtMoc>
     <QtMoc Include="BookReader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\widget</Filter>
+    </QtMoc>
+    <QtMoc Include="LMS.hpp">
+      <Filter>Header Files\widget</Filter>
+    </QtMoc>
+    <QtMoc Include="SysManager.h">
+      <Filter>Header Files\widget</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <QtUic Include="SysManager.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
     <QtUic Include="BookManager.ui">
-      <Filter>Form Files</Filter>
+      <Filter>Form Files\widget</Filter>
+    </QtUic>
+    <QtUic Include="LMS.ui">
+      <Filter>Form Files\widget</Filter>
     </QtUic>
     <QtUic Include="BookReader.ui">
-      <Filter>Form Files</Filter>
+      <Filter>Form Files\widget</Filter>
+    </QtUic>
+    <QtUic Include="SysManager.ui">
+      <Filter>Form Files\widget</Filter>
     </QtUic>
   </ItemGroup>
 </Project>
