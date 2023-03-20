@@ -1,4 +1,4 @@
-﻿#include "LMS.h"
+﻿#include "LMS.hpp"
 
 using namespace lms;
 
@@ -9,4 +9,16 @@ LMS::LMS(QWidget *parent)
 
 LMS::~LMS() {
 
+}
+
+void LMS::on_SysManagerBtn_clicked() {
+    this->ChangeWidgetOnMenu<SysManager>();
+}
+
+void LMS::on_BookManagerBtn_clicked() {
+    this->ChangeWidgetOnMenu<BookManager>();
+}
+
+void LMS::on_BookReaderBtn_clicked() {
+    this->ChangeWidgetOnMenu<BookReader>();
 }

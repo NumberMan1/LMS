@@ -9,7 +9,7 @@ class SysManager : public QMainWindow {
     Q_OBJECT
 
 public:
-    SysManager(QWidget *parent = nullptr);
+    explicit SysManager(QWidget *parent = nullptr);
     ~SysManager();
 
 private:

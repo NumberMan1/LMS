@@ -9,7 +9,7 @@ class BookManager : public QMainWindow {
     Q_OBJECT
 
 public:
-    BookManager(QWidget *parent = nullptr);
+    explicit BookManager(QWidget *parent = nullptr);
     ~BookManager();
 
 private:

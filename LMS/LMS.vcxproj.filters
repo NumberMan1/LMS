@@ -29,7 +29,7 @@
     <QtUic Include="LMS.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtMoc Include="LMS.h">
+    <QtMoc Include="LMS.hpp">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClCompile Include="LMS.cpp">

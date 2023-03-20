@@ -95,7 +95,7 @@
     <QtUic Include="BookManager.ui" />
     <QtUic Include="BookReader.ui" />
     <QtUic Include="LMS.ui" />
-    <QtMoc Include="LMS.h" />
+    <QtMoc Include="LMS.hpp" />
     <ClCompile Include="LMS.cpp" />
     <ClCompile Include="main.cpp" />
     <QtUic Include="SysManager.ui" />

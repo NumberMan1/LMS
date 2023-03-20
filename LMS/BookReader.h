@@ -9,7 +9,7 @@ class BookReader : public QMainWindow {
     Q_OBJECT
 
 public:
-    BookReader(QWidget *parent = nullptr);
+    explicit BookReader(QWidget *parent = nullptr);
     ~BookReader();
 
 private:
