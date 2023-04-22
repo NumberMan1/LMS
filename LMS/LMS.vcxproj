@@ -88,26 +88,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BookManager.cpp" />
-    <ClCompile Include="BookReader.cpp" />
-    <ClCompile Include="SysManager.cpp" />
-    <QtRcc Include="LMS.qrc" />
-    <QtUic Include="BookManager.ui" />
-    <QtUic Include="BookReader.ui" />
-    <QtUic Include="LMS.ui" />
-    <QtMoc Include="LMS.hpp" />
-    <ClCompile Include="LMS.cpp" />
-    <ClCompile Include="main.cpp" />
-    <QtUic Include="SysManager.ui" />
+    <ClCompile Include="lms_config.cc" />
+    <QtRcc Include="lms.qrc" />
+    <QtUic Include="lms_main_window.ui" />
+    <QtMoc Include="lms_main_window.h" />
+    <ClCompile Include="lms_main_window.cc" />
+    <ClCompile Include="main.cc" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="SysManager.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtMoc Include="BookManager.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtMoc Include="BookReader.h" />
+    <ClInclude Include="lms_config.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

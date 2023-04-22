@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/LMS_BUTTON">
         <file>picture/bakcBtn.jpg</file>
+        <file>picture/bk_menu.jpg</file>
     </qresource>
 </RCC>

@@ -30,55 +30,45 @@
     <Filter Include="Form Files\widget">
       <UniqueIdentifier>{dbadfeea-68e6-41d3-8e73-658180124864}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Form Files\dialog">
+      <UniqueIdentifier>{e5e74519-8c54-43bf-8b63-63645cbcfa3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\dialog">
+      <UniqueIdentifier>{11df9539-82f5-4a5c-b309-1f83c82ee2a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\dialog">
+      <UniqueIdentifier>{3298df08-7774-4f71-b1bc-7821e7f1416b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <QtRcc Include="LMS.qrc">
+    <QtRcc Include="lms.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="main.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BookManager.cpp">
+    <ClCompile Include="lms_main_window.cc">
       <Filter>Source Files\widget</Filter>
     </ClCompile>
-    <ClCompile Include="BookReader.cpp">
-      <Filter>Source Files\widget</Filter>
-    </ClCompile>
-    <ClCompile Include="LMS.cpp">
-      <Filter>Source Files\widget</Filter>
-    </ClCompile>
-    <ClCompile Include="SysManager.cpp">
-      <Filter>Source Files\widget</Filter>
+    <ClCompile Include="lms_config.cc">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="BookManager.h">
-      <Filter>Header Files\widget</Filter>
-    </QtMoc>
-    <QtMoc Include="BookReader.h">
-      <Filter>Header Files\widget</Filter>
-    </QtMoc>
-    <QtMoc Include="LMS.hpp">
-      <Filter>Header Files\widget</Filter>
-    </QtMoc>
-    <QtMoc Include="SysManager.h">
+    <QtMoc Include="lms_main_window.h">
       <Filter>Header Files\widget</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <QtUic Include="BookManager.ui">
+    <QtUic Include="lms_main_window.ui">
       <Filter>Form Files\widget</Filter>
     </QtUic>
-    <QtUic Include="LMS.ui">
-      <Filter>Form Files\widget</Filter>
-    </QtUic>
-    <QtUic Include="BookReader.ui">
-      <Filter>Form Files\widget</Filter>
-    </QtUic>
-    <QtUic Include="SysManager.ui">
-      <Filter>Form Files\widget</Filter>
-    </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="lms_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
