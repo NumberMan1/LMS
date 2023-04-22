@@ -55,6 +55,9 @@
     <ClCompile Include="lms_config.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="lms_user_singleton.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="lms_main_window.h">
@@ -68,6 +71,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lms_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lms_user_singleton.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

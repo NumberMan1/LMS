@@ -93,10 +93,12 @@
     <QtUic Include="lms_main_window.ui" />
     <QtMoc Include="lms_main_window.h" />
     <ClCompile Include="lms_main_window.cc" />
+    <ClCompile Include="lms_user_singleton.cc" />
     <ClCompile Include="main.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lms_config.h" />
+    <ClInclude Include="lms_user_singleton.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
