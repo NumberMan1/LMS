@@ -1,4 +1,4 @@
-﻿#include "LMS.hpp"
+﻿#include "lms_main_window.h"
 #include <QtWidgets/QApplication>
 
 using namespace lms;

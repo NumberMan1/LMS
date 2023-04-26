@@ -32,8 +32,8 @@
    <widget class="QStackedWidget" name="stackedWidget">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>-10</y>
+      <x>0</x>
+      <y>0</y>
       <width>800</width>
       <height>600</height>
      </rect>
@@ -54,7 +54,7 @@
      <string notr="true"/>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="menu_page_1">
      <layout class="QGridLayout" name="gridLayout_3">
@@ -104,8 +104,8 @@
       </item>
      </layout>
     </widget>
-    <widget class="QWidget" name="search_book_page_2">
-     <widget class="QTableWidget" name="tableWidget">
+    <widget class="QWidget" name="search_book_page2">
+     <widget class="QTableWidget" name="search_book_table_widget">
       <property name="geometry">
        <rect>
         <x>70</x>
@@ -116,7 +116,7 @@
       </property>
       <column>
        <property name="text">
-        <string>序号</string>
+        <string>序号ID</string>
        </property>
       </column>
       <column>
@@ -155,6 +155,16 @@
        </rect>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="search_text_lable">
+         <property name="text">
+          <string>请输入要搜索的内容</string>
+         </property>
+         <property name="buddy">
+          <cstring>search_text_edit</cstring>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QPlainTextEdit" name="search_text_edit"/>
        </item>
@@ -211,8 +221,8 @@
      <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
-        <x>190</x>
-        <y>480</y>
+        <x>180</x>
+        <y>470</y>
         <width>401</width>
         <height>26</height>
        </rect>
@@ -268,7 +278,7 @@
       </layout>
      </widget>
     </widget>
-    <widget class="QWidget" name="user_login_page_3">
+    <widget class="QWidget" name="user_login_page3">
      <widget class="QPushButton" name="user_login_back_btn">
       <property name="geometry">
        <rect>
@@ -325,6 +335,9 @@
        </property>
        <property name="text">
         <string>密码:</string>
+       </property>
+       <property name="buddy">
+        <cstring>user_login_pwd_line_edit</cstring>
        </property>
       </widget>
       <widget class="QWidget" name="layoutWidget_2">
@@ -398,12 +411,466 @@
        <property name="text">
         <string>用户名:</string>
        </property>
+       <property name="buddy">
+        <cstring>user_login_account_line_edit</cstring>
+       </property>
       </widget>
      </widget>
      <zorder>user_login_widget</zorder>
      <zorder>user_login_back_btn</zorder>
     </widget>
-    <widget class="QWidget" name="user_sign_up_page_4"/>
+    <widget class="QWidget" name="user_sign_up_page4">
+     <widget class="QWidget" name="user_sign_up_widget" native="true">
+      <property name="geometry">
+       <rect>
+        <x>160</x>
+        <y>170</y>
+        <width>471</width>
+        <height>241</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QWidget{ background-color: rgb(252, 255, 242)}</string>
+      </property>
+      <widget class="QWidget" name="layoutWidget_3">
+       <property name="geometry">
+        <rect>
+         <x>28</x>
+         <y>190</y>
+         <width>423</width>
+         <height>26</height>
+        </rect>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <item>
+         <spacer name="horizontalSpacer_9">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="user_sign_up_back_btn">
+          <property name="text">
+           <string>返回</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_11">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="user_sign_up_yse_btn">
+          <property name="text">
+           <string>注册</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_10">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="">
+       <property name="geometry">
+        <rect>
+         <x>80</x>
+         <y>50</y>
+         <width>311</width>
+         <height>101</height>
+        </rect>
+       </property>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="user_sign_up_account_lable">
+          <property name="text">
+           <string>请输入账号</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="user_sign_up_account_line_edit"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="user_sign_up_pwd_lable">
+          <property name="text">
+           <string>请输入密码</string>
+          </property>
+          <property name="buddy">
+           <cstring>user_login_account_line_edit</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="user_sign_up_pwd_line_edit"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="user_sign_up_re_pwd_lable">
+          <property name="text">
+           <string>请确定密码:</string>
+          </property>
+          <property name="buddy">
+           <cstring>user_login_pwd_line_edit</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="user_sign_up_re_pwd_edit"/>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="administrator_page5">
+     <widget class="QStackedWidget" name="administrator_stack_widget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>90</y>
+        <width>801</width>
+        <height>491</height>
+       </rect>
+      </property>
+      <widget class="QWidget" name="administrator_book_page1">
+       <widget class="QWidget" name="layoutWidget_6">
+        <property name="geometry">
+         <rect>
+          <x>520</x>
+          <y>460</y>
+          <width>201</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_10">
+         <item>
+          <widget class="QPushButton" name="administrator_edit_btn_2">
+           <property name="text">
+            <string>添加或编辑</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_16">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="administrator_delete_btn_2">
+           <property name="text">
+            <string>选择删除</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="layoutWidget_4">
+        <property name="geometry">
+         <rect>
+          <x>80</x>
+          <y>460</y>
+          <width>401</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QPushButton" name="administrator_pre_btn_2">
+           <property name="text">
+            <string>上一页</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_17">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="administrator_page_num_lable_2">
+           <property name="text">
+            <string>第页</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_18">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="administrator_next_btn_2">
+           <property name="text">
+            <string>下一页</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QTableWidget" name="administrator_book_table_widget">
+        <property name="geometry">
+         <rect>
+          <x>80</x>
+          <y>100</y>
+          <width>641</width>
+          <height>321</height>
+         </rect>
+        </property>
+        <column>
+         <property name="text">
+          <string>序号ID</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>分类</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>名称</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>作者</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>价格</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>当前数量</string>
+         </property>
+        </column>
+       </widget>
+       <widget class="QWidget" name="layoutWidget_5">
+        <property name="geometry">
+         <rect>
+          <x>80</x>
+          <y>10</y>
+          <width>641</width>
+          <height>73</height>
+         </rect>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_12">
+         <item>
+          <widget class="QLabel" name="administrator_text_lable_2">
+           <property name="text">
+            <string>请输入要搜索的内容</string>
+           </property>
+           <property name="buddy">
+            <cstring>search_text_edit</cstring>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPlainTextEdit" name="administrator_text_edit_2"/>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="administrator_id_check_box_2">
+           <property name="text">
+            <string>序号</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="administrator_type_check_box_2">
+           <property name="text">
+            <string>分类</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="administrator_name_check_box_2">
+           <property name="text">
+            <string>名称</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="administrator_auther_check_box_2">
+           <property name="text">
+            <string>作者</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_19">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="administrator_user_page2"/>
+     </widget>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>30</y>
+        <width>771</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <item>
+        <spacer name="horizontalSpacer_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="administrator_back_bn">
+         <property name="text">
+          <string>返回</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_21">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="administrator_book_btn">
+         <property name="text">
+          <string>书籍文件</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_22">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="administrator_user_btn">
+         <property name="text">
+          <string>用户管理</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_23">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="administrator_borrow_or_return_btn">
+         <property name="text">
+          <string>借阅登记/归还</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_20">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>

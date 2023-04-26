@@ -31,7 +31,7 @@ public:
         return login_name_;
     }
 private:
-    explicit UserSingleton();
+    explicit UserSingleton() = default;
     UserType type_;
     std::string login_name_;
     static UserSingleton instance_;
