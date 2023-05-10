@@ -39,6 +39,9 @@
     <Filter Include="Source Files\dialog">
       <UniqueIdentifier>{3298df08-7774-4f71-b1bc-7821e7f1416b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\cjs">
+      <UniqueIdentifier>{459bebaf-f0b3-415a-b040-006a392f960a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="lms.qrc">
@@ -58,6 +61,15 @@
     <ClCompile Include="lms_user_singleton.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="lms_book_dialog.cc">
+      <Filter>Source Files\dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="lms_user_dialog.cc">
+      <Filter>Source Files\dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="lms_borrow_dialog.cc">
+      <Filter>Source Files\dialog</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="lms_main_window.h">
@@ -68,6 +80,15 @@
     <QtUic Include="lms_main_window.ui">
       <Filter>Form Files\widget</Filter>
     </QtUic>
+    <QtUic Include="lms_book_edit_dialog.ui">
+      <Filter>Form Files\dialog</Filter>
+    </QtUic>
+    <QtUic Include="lms_user_edit_dialog.ui">
+      <Filter>Form Files\dialog</Filter>
+    </QtUic>
+    <QtUic Include="lms_borrow_edit_dialog.ui">
+      <Filter>Form Files\dialog</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lms_config.h">
@@ -75,6 +96,27 @@
     </ClInclude>
     <ClInclude Include="lms_user_singleton.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lms_book_dialog.h">
+      <Filter>Header Files\dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="lms_user_dialog.h">
+      <Filter>Header Files\dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="cjs\mine_aes.hpp">
+      <Filter>Header Files\cjs</Filter>
+    </ClInclude>
+    <ClInclude Include="cjs\mine_base64.hpp">
+      <Filter>Header Files\cjs</Filter>
+    </ClInclude>
+    <ClInclude Include="cjs\mine_hash.hpp">
+      <Filter>Header Files\cjs</Filter>
+    </ClInclude>
+    <ClInclude Include="cjs\mine_rsa.hpp">
+      <Filter>Header Files\cjs</Filter>
+    </ClInclude>
+    <ClInclude Include="lms_borrow_dialog.h">
+      <Filter>Header Files\dialog</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

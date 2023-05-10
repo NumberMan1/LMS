@@ -32,7 +32,7 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>msvc2019_64</QtInstall>
-    <QtModules>core;gui;widgets</QtModules>
+    <QtModules>core;gui;network;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
@@ -88,16 +88,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="lms_book_dialog.cc" />
+    <ClCompile Include="lms_borrow_dialog.cc" />
     <ClCompile Include="lms_config.cc" />
     <QtRcc Include="lms.qrc" />
+    <QtUic Include="lms_book_edit_dialog.ui" />
+    <QtUic Include="lms_borrow_edit_dialog.ui" />
     <QtUic Include="lms_main_window.ui" />
     <QtMoc Include="lms_main_window.h" />
     <ClCompile Include="lms_main_window.cc" />
+    <ClCompile Include="lms_user_dialog.cc" />
     <ClCompile Include="lms_user_singleton.cc" />
     <ClCompile Include="main.cc" />
+    <QtUic Include="lms_user_edit_dialog.ui" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cjs\mine_aes.hpp" />
+    <ClInclude Include="cjs\mine_base64.hpp" />
+    <ClInclude Include="cjs\mine_hash.hpp" />
+    <ClInclude Include="cjs\mine_rsa.hpp" />
+    <ClInclude Include="lms_book_dialog.h" />
+    <ClInclude Include="lms_borrow_dialog.h" />
     <ClInclude Include="lms_config.h" />
+    <ClInclude Include="lms_user_dialog.h" />
     <ClInclude Include="lms_user_singleton.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

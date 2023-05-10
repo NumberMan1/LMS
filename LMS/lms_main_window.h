@@ -2,20 +2,101 @@
 #define LMS_LMS_MAIN_WINDOW_H
 
 #include <QtWidgets/QMainWindow>
-#include <variant>
+#include <qnetworkaccessmanager.h>
+#include <qnetworkreply.h>
 #include "ui_lms_main_window.h"
+
+#include "lms_config.h"
 
 namespace lms {
 
-class LMS : public QMainWindow {
+enum PageIndex {
+    kMenuPage = 0,
+    kAdministratorBookPage = 0,
+    kAdministratorUserPage = 1,
+    kNormalBookSearchPage = 1,
+    kAdministratorBorrowPage = 2,
+    kUserSignInPage = 2,
+    kUserSignUpPage = 3,
+    kAdministratorPage = 4,
+    kNormalUserPage = 5
+};
+
+class LMSMainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit LMS(QWidget *parent = nullptr);
-    ~LMS();
-private slots:
+    explicit LMSMainWindow(QWidget *parent = nullptr);
+    ~LMSMainWindow();
 public slots:
+    // 删除和编辑按钮
+    //void UserEditBtnClickedCB();
+    //void UserDelBtnClickedCB();
+    //void BookEditBtnClickedCB();
+    //void UserDelBtnClickedCB();
+private slots:
+    // 下列为页面切换
+    // 由默认页面切换到普通搜索书籍页面
+    void on_menu_search_book_btn_clicked();
+    // 由默认页面切换到登录页面
+    void on_menu_sign_in_btn_clicked();
+    // 由登录页面切换到注册页面
+    void on_user_login_sign_up_btn_clicked();
+    // 由普通搜索书籍页面切换到默认页面
+    void on_search_back_btn_clicked();
+    // 由登录页面切换到默认页面
+    void on_user_login_back_btn_clicked();
+    // 由注册页面切换到默认页面
+    void on_user_sign_up_back_btn_clicked();
+    // 以下为管理员页面切换
+    // 书籍管理页面
+    void on_administrator_book_btn_clicked();
+    // 用户管理页面
+    void on_administrator_user_btn_clicked();
+    // 借阅登记页面
+    void on_administrator_borrow_or_return_btn_clicked();
+    // 返回默认页面
+    void on_administrator_back_btn_clicked();
+    // 返回用户页面返回默认页面
+    void on_user_back_btn_clicked();
+
+    // 下列为登录注册
+    // 读者登录
+    void on_user_login_normal_btn_clicked();
+    // 管理员登录
+    void on_user_login_administrator_btn_clicked();
+    // 注册
+    void on_user_sign_up_yse_btn_clicked();
+
+    // 借阅登记
+
+    // 下列为翻页
+    // 管理员书籍上一页
+    void on_administrator_book_pre_btn_clicked();
+    // 管理员书籍下一页
+    void on_administrator_book_next_btn_clicked();
+    // 管理员用户上一页
+    void on_administrator_user_pre_btn_clicked();
+    // 管理员用户下一页
+    void on_administrator_user_next_btn_clicked();
+    // 管理员借书上一页
+    void on_administrator_borrow_pre_btn_clicked();
+    // 管理员借书下一页
+    void on_administrator_borrow_next_btn_clicked();
+private: // 私有工作函数
+    QNetworkReply* UserLogin(bool is_reader);
+    BookInfo BookAt(int row) const;
+    UserInfo UserAt(int row) const;
+    void ShowBookList(QTableWidget *table_widget);
+    void ShowUserList();
+    QNetworkReply* SendPost(std::string_view url_type, const QJsonDocument &json_doc);
+
 private:
+    int s_n_book_page_num_ = 1;
+    int s_a_book_page_num_ = 1;
+    int s_a_user_page_num_ = 1;
+    int s_a_borrow_page_num_ = 1;
+    QNetworkAccessManager *net_manager_ = new QNetworkAccessManager(this);
     Ui::LMSMainWindow ui_;
 };
 
