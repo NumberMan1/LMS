@@ -69,6 +69,7 @@ private slots:
     void on_user_sign_up_yse_btn_clicked();
 
     // 借阅登记
+    void on_administrator_borrow_sign_btn_clicked();
 
     // 下列为翻页
     // 管理员书籍上一页
@@ -87,8 +88,10 @@ private: // 私有工作函数
     QNetworkReply* UserLogin(bool is_reader);
     BookInfo BookAt(int row) const;
     UserInfo UserAt(int row) const;
+    BorrowInfo BorrowAt(bool is_reader, int row) const;
     void ShowBookList(QTableWidget *table_widget);
     void ShowUserList();
+    void ShowBorrowList(bool is_reader, QTableWidget* table_widget);
     QNetworkReply* SendPost(std::string_view url_type, const QJsonDocument &json_doc);
 
 private:

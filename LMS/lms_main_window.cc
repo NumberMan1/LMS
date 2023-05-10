@@ -187,6 +187,10 @@ void LMSMainWindow::on_user_sign_up_yse_btn_clicked() {
         });
 }
 
+void LMSMainWindow::on_administrator_borrow_sign_btn_clicked() {
+    BorrowDialog dialog{ true, this };
+    dialog.exec();
+}
 
 void LMSMainWindow::on_administrator_book_pre_btn_clicked() {
 
@@ -335,6 +339,75 @@ void LMSMainWindow::ShowUserList() {
     }
 }
 
+void LMSMainWindow::ShowBorrowList(bool is_reader, QTableWidget* table_widget) {
+    QFile file{ R"cpp(for_text/borrow_list.json)cpp" };
+    file.open(QIODevice::ReadOnly);
+    QJsonDocument json_doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+    QJsonArray jarr = json_doc.array();
+    table_widget->setRowCount(jarr.size());
+    QPushButton* btn = nullptr;
+    QDateEdit* time_edit = nullptr;
+    for (int i = 0; auto value : jarr) {
+        int j = 0;
+        QJsonObject item = value.toObject();
+        table_widget->setItem(i, j,
+            new QTableWidgetItem{ QString::number(item["book_id"].toInt()) });
+        ++j;
+        table_widget->setItem(i, j,
+            new QTableWidgetItem{ item["book_name"].toString() });
+        ++j;
+        if (!is_reader) { // 用于管理员页面
+            table_widget->setItem(i, j,
+                new QTableWidgetItem{ QString::number(item["reader_id"].toInt()) });
+            ++j;
+            table_widget->setItem(i, j,
+                new QTableWidgetItem{ item["reader_login_name"].toString() });
+            ++j;
+            time_edit = new QDateEdit(this);
+            time_edit->setDate(QDate::fromString(item["borrow_deadline"].toString(), kDateFormat));
+            time_edit->setDisabled(true);
+            table_widget->setCellWidget(i, j, time_edit);
+            ++j;
+        }
+        time_edit = new QDateEdit(this);
+        time_edit->setDate(QDate::fromString(item["borrow_deadline"].toString(), kDateFormat));
+        time_edit->setDisabled(true);
+        table_widget->setCellWidget(i, j, time_edit);
+        ++j;
+        table_widget->setItem(i, j,
+            new QTableWidgetItem{ QString::number(item["book_price"].toDouble()) });
+        if (!is_reader) { // 用于管理员页面
+            btn = new QPushButton{ "还书", this };
+            table_widget->setCellWidget(
+                i, kAdministratorBorrowTableReturnColumn, btn);
+            connect(btn, &QPushButton::clicked, this,
+                [row = i, table = table_widget]() {
+                });
+            btn = new QPushButton{ "异常", this };
+            table_widget->setCellWidget(
+                i, kAdministratorBorrowTableErrorColumn, btn);
+            connect(btn, &QPushButton::clicked, this,
+                [row = i, table = table_widget]() {
+                });
+        }
+        else {
+            btn = new QPushButton{ "还书", this };
+            table_widget->setCellWidget(
+                i, kUserBorrowTableReturnColumn, btn);
+            connect(btn, &QPushButton::clicked, this,
+                [row = i, table = table_widget]() {
+                });
+            btn = new QPushButton{ "还款", this };
+            table_widget->setCellWidget(
+                i, kUserBorrowTablePayColumn, btn);
+            connect(btn, &QPushButton::clicked, this,
+                [row = i, table = table_widget]() {
+                });
+        }
+        ++i;
+    }
+}
 
 QNetworkReply* LMSMainWindow::SendPost(std::string_view url_type,
         const QJsonDocument &json_doc) {
