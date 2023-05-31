@@ -40,6 +40,7 @@ void UserDialog::accept() {
 }
 
 void UserDialog::SetUserInfo(const UserInfo& info) {
+    ui_.id_edit->setText(QString::number(info.id));
     ui_.login_name_edit->setText(info.login_name.c_str());
     ui_.name_edit->setText(info.name.c_str());
     ui_.tel_edit->setText(info.tel.c_str());
@@ -54,6 +55,7 @@ UserInfo UserDialog::GetUserInfo() const {
     info.name = ui_.name_edit->text().toStdString();
     info.pwd = h.Final();
     info.tel = ui_.tel_edit->text().toStdString();
+    info.id = ui_.id_edit->text().toInt();
     return info;
 }
 

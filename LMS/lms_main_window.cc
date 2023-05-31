@@ -14,20 +14,377 @@
 #include "lms_user_dialog.h"
 #include "lms_borrow_dialog.h"
 
+namespace {
+
+void PagePreImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
+    --(*page_num);
+    if (!next_btn->isEnabled()) {
+        next_btn->setEnabled(true);
+    }
+    // 判断是否为第一页
+    if (*page_num == 1) {
+        pre_btn->setDisabled(true);
+    }
+}
+
+void PageNextImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
+    ++(*page_num);
+    if (!pre_btn->isEnabled()) {
+        pre_btn->setEnabled(true);
+    }
+    // 判断是否为最后一页
+    next_btn->setDisabled(true);
+}
+
+void PageRestartImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
+    *page_num = 1;
+    pre_btn->setDisabled(true);
+    next_btn->setEnabled(true);
+}
+
+void EditBookFuncImpl(QTableWidget* table, lms::LMSMainWindow *p, lms::BookInfo info) {
+    QJsonDocument json_doc;
+    json_doc.setObject(
+        {
+            {"action", "update"},
+            {"book_id", info.id},
+            {"book_type", info.type},
+            {"book_name", info.name.c_str()},
+            {"book_auther", info.auther.c_str()},
+            {"book_press", info.press.c_str()},
+            {"book_price", info.price},
+            {"book_num", info.num}
+        }
+    );
+    auto reply = p->SendPost(lms::kBookURL, json_doc);
+    p->connect(reply, &QNetworkReply::readyRead, p,
+        [reply = reply, p = p, table = table]() {
+            auto json = QJsonDocument::fromJson(reply->readAll());
+            if (json["is_updated"].toBool()) {
+                p->ShowBookList(table, false);
+            } else {
+                QMessageBox box;
+                box.setText("编辑失败");
+                box.exec();
+                // 只有当成功时才自动释放
+                reply->deleteLater();
+            }
+        });
+}
+
+void EditReaderFuncImpl(QTableWidget *table, lms::LMSMainWindow *p, lms::UserInfo info) {
+    QJsonDocument json_doc;
+    json_doc.setObject(
+        {
+            {"action", "update"},
+            {"user_id", info.id},
+            {"user_login_name", info.login_name.c_str()},
+            {"user_name", info.name.c_str()},
+            {"user_pwd", info.pwd.c_str()},
+            {"user_tel", info.tel.c_str()}
+        }
+    );
+    auto reply = p->SendPost(lms::kUserURL, json_doc);
+    p->connect(reply, &QNetworkReply::readyRead,
+        [reply = reply, table = table, p = p]() {
+            auto json_doc = QJsonDocument::fromJson(reply->readAll());
+            QMessageBox box{p};
+            if (json_doc["is_updated"].toBool()) {
+                box.setText("修改成功");
+                p->ShowUserList(table);
+            } else {
+                box.setText("修改失败");
+            }
+            box.exec();
+            reply->deleteLater();
+        });
+}
+
+void DelImpl(int row, QTableWidget *table, lms::LMSMainWindow *p,
+        const char *id_text, const char *url, bool is_book_table) {
+    QJsonDocument json_doc;
+    json_doc.setObject(
+        {
+            {"action", "delete"},
+            {id_text, table->item(row, 0)->text().toInt()}
+        }
+    );
+    auto reply = p->SendPost(url, json_doc);
+    p->connect(reply, &QNetworkReply::readyRead,
+        [reply = reply, p = p, table = table, type = is_book_table]() {
+            auto json_doc = QJsonDocument::fromJson(reply->readAll());
+            QMessageBox box{ p };
+            if (json_doc["is_deleted"].toBool()) {
+                box.setText("删除成功");
+                if (type) {
+                    p->ShowBookList(table, false);
+                } else {
+                    p->ShowUserList(table);
+                }
+            }
+            else {
+                box.setText("删除失败");
+            }
+            box.exec();
+            reply->deleteLater();
+        });
+}
+
+void BorrowErrorImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
+    lms::BorrowDialog dialog{false, p};
+    dialog.SetBorrowInfo(p->BorrowAt(false, row));
+    dialog.exec();
+    if (dialog.result()) {
+        auto info = dialog.GetBorrowInfo();
+        QJsonDocument json_doc;
+        json_doc.setObject(
+            {
+                {"action", "error"},
+                {"book_class_id", info.book_id},
+                {"reader_id", info.user_id},
+                {"borrow_price", info.price},
+                {"borrow_date", info.borrow_date.c_str()},
+                {"borrow_deadline", info.borrow_deadline.c_str()},
+                {"error_text", dialog.GetErrorText().c_str()}
+            }
+        );
+        auto reply = p->SendPost(lms::kBorrowURL, json_doc);
+        p->connect(reply, &QNetworkReply::readyRead, p,
+            [p = p, reply = reply, table = table]() {
+                auto json_doc = QJsonDocument::fromJson(reply->readAll());
+                qDebug() << json_doc;
+                QMessageBox box{p};
+                if (json_doc["is_solved"].toBool()) {
+                    box.setText("异常上报成功");
+                    p->ShowBorrowList(table, false);
+                } else {
+                    box.setText("异常上报失败");
+                }
+                box.exec();
+                reply->deleteLater();
+            });
+    }
+}
+
+void DelBookFuncImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
+    ::DelImpl(row, table, p, "book_id", lms::kBookURL, true);
+}
+
+void DelUserFuncImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
+    ::DelImpl(row, table, p, "user_id", lms::kUserURL, false);
+}
+
+void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
+        lms::LMSMainWindow *p, bool flag) {
+    using namespace lms;
+    // 删除之前的数据
+    QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    if (!json_doc.isEmpty()) {
+        table->setRowCount(0);
+        QJsonArray jarr = json_doc.array();
+        table->setRowCount(jarr.size());
+        for (int i = 0; auto value : jarr) {
+            int j = 0;
+            QJsonObject book = value.toObject();
+            table->setItem(i, j,
+                new QTableWidgetItem{ QString::number(book["book_id"].toInt()) });
+            ++j;
+            QComboBox* combo_box = new QComboBox(p);
+            combo_box->addItem("教育");
+            combo_box->addItem("童话");
+            combo_box->addItem("文学");
+            combo_box->addItem("科幻");
+            combo_box->setCurrentIndex(book["book_type"].toInt() - 1);
+            combo_box->setDisabled(true);
+            table->setCellWidget(i, j, combo_box);
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ book["book_name"].toString() });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ book["book_auther"].toString() });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ book["book_press"].toString() });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ QString::number(book["book_price"].toDouble()) });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ QString::number(book["book_num"].toInt()) });
+            if (!flag) {
+                QPushButton* btn = nullptr;
+                btn = new QPushButton{ "编辑", p };
+                table->setCellWidget(i, kAdministratorBookTableEditColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [table = table, t = p, row = i]() {
+                        BookDialog dialog{ false, t };
+                        dialog.SetBookInfo(t->BookAt(row));
+                        dialog.exec();
+                        if (dialog.result()) {
+                            ::EditBookFuncImpl(table, t, dialog.GetBookInfo());
+                        }
+                    });
+                btn = new QPushButton{ "删除", p };
+                table->setCellWidget(i, kAdministratorBookTableDelColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [row = i, table = table, p = p]() {
+                        ::DelBookFuncImpl(row, table, p);
+                    });
+            }
+            ++i;
+        }
+    }
+    reply->deleteLater();
+}
+
+void ShowBorrowListReplyCB(QNetworkReply* reply, QTableWidget* table_widget,
+    lms::LMSMainWindow* p, bool is_reader) {
+    using namespace lms;
+    // 删除之前的数据
+    QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    if (!json_doc.isEmpty()) {
+        table_widget->setRowCount(0);
+        QJsonArray jarr = json_doc.array();
+        table_widget->setRowCount(jarr.size());
+        QPushButton* btn = nullptr;
+        QDateEdit* time_edit = nullptr;
+        for (int i = 0; auto value : jarr) {
+            int j = 0;
+            QJsonObject item = value.toObject();
+            table_widget->setItem(i, j,
+                new QTableWidgetItem{ QString::number(item["book_id"].toInt()) });
+            ++j;
+            table_widget->setItem(i, j,
+                new QTableWidgetItem{ item["book_name"].toString() });
+            ++j;
+            if (!is_reader) { // 用于管理员页面
+                table_widget->setItem(i, j,
+                    new QTableWidgetItem{ QString::number(item["reader_id"].toInt()) });
+                ++j;
+                table_widget->setItem(i, j,
+                    new QTableWidgetItem{ item["reader_login_name"].toString() });
+                ++j;
+                time_edit = new QDateEdit(p);
+                time_edit->setDate(QDate::fromString(item["borrow_date"].toString(), kDateFormat));
+                time_edit->setDisabled(true);
+                table_widget->setCellWidget(i, j, time_edit);
+                ++j;
+            }
+            time_edit = new QDateEdit(p);
+            time_edit->setDate(QDate::fromString(item["borrow_deadline"].toString(), kDateFormat));
+            time_edit->setDisabled(true);
+            table_widget->setCellWidget(i, j, time_edit);
+            ++j;
+            table_widget->setItem(i, j,
+                new QTableWidgetItem{ QString::number(item["book_price"].toDouble()) });
+            if (!is_reader) { // 用于管理员页面
+                btn = new QPushButton{ "还书", p };
+                table_widget->setCellWidget(
+                    i, kAdministratorBorrowTableReturnColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [row = i, table = table_widget]() {
+                    });
+                btn = new QPushButton{ "异常", p };
+                table_widget->setCellWidget(
+                    i, kAdministratorBorrowTableErrorColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [row = i, table = table_widget, p = p]() {
+                        ::BorrowErrorImpl(row, table, p);
+                    });
+            }
+            else {
+                btn = new QPushButton{ "还书", p };
+                table_widget->setCellWidget(
+                    i, kUserBorrowTableReturnColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [row = i, table = table_widget]() {
+                    });
+                btn = new QPushButton{ "还款", p };
+                table_widget->setCellWidget(
+                    i, kUserBorrowTablePayColumn, btn);
+                p->connect(btn, &QPushButton::clicked, p,
+                    [row = i, table = table_widget]() {
+                    });
+            }
+            ++i;
+        }
+    }
+    reply->deleteLater();
+}
+
+void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
+        lms::LMSMainWindow *p) {
+    using namespace lms;
+    QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    if (!json_doc.isEmpty()) {
+        table->setRowCount(0);
+        QJsonArray jarr = json_doc.array();
+        QPushButton* btn = nullptr;
+        table->setRowCount(jarr.size());
+        for (int i = 0; auto value : jarr) {
+            int j = 0;
+            QJsonObject user = value.toObject();
+            table->setItem(i, j,
+                new QTableWidgetItem{ QString::number(user["reader_id"].toInt()) });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ user["reader_login_name"].toString() });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ user["reader_name"].toString() });
+            ++j;
+            table->setItem(i, j,
+                new QTableWidgetItem{ user["reader_tel"].toString() });
+            btn = new QPushButton{ "编辑", p };
+            table->setCellWidget(
+                i, kAdministratorUserTableEditColumn, btn);
+            p->connect(btn, &QPushButton::clicked, p,
+                [row = i, p = p, table = table]() {
+                    UserDialog dialog{p};
+                    dialog.SetUserInfo(p->UserAt(row));
+                    dialog.exec();
+                    if (dialog.result()) {
+                        ::EditReaderFuncImpl(table, p, dialog.GetUserInfo());
+                    }
+                });
+            btn = new QPushButton{ "删除", p };
+            table->setCellWidget(
+                i, kAdministratorUserTableDelColumn, btn);
+            p->connect(btn, &QPushButton::clicked, p,
+                [row = i, table = table, p = p]() {
+                    ::DelUserFuncImpl(row, table, p);
+                });
+            ++i;
+        }
+    }
+    reply->deleteLater();
+}
+
+
+} // !namespace::
+
 namespace lms {
 
 LMSMainWindow::LMSMainWindow(QWidget *parent)
         : QMainWindow(parent) {
     ui_.setupUi(this);
+    InitPageLabel();
+    connect(this, &LMSMainWindow::ShowBookListReplyCBSignal, ::ShowBookListReplyCB);
+    connect(this, &LMSMainWindow::ShowUserListReplyCBSignal, ::ShowUserListReplyCB);
+    connect(this ,&LMSMainWindow::ShowBorrowListReplyCBSignal, ::ShowBorrowListReplyCB);
 }
 
 LMSMainWindow::~LMSMainWindow() {
     qDebug() << "LMSMainWindow 析构";
 }
 
+// 下列为页面切换
+
 void LMSMainWindow::on_menu_search_book_btn_clicked() {
+    ::PageRestartImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn);
     ui_.stackedWidget->setCurrentIndex(PageIndex::kNormalBookSearchPage);
-    ShowBookList(ui_.search_book_table_widget);
+    ShowBookList(ui_.search_book_table_widget, true);
     ui_.search_page_num_lable->setText(
         QString("第") + QString::number(s_n_book_page_num_) + QString("页"));
 }
@@ -52,49 +409,24 @@ void LMSMainWindow::on_user_sign_up_back_btn_clicked() {
     ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
+// 以下为管理员页面切换
+
 void LMSMainWindow::on_administrator_book_btn_clicked() {
+    ::PageRestartImpl(&s_a_book_page_num_, ui_.administrator_book_pre_btn, ui_.administrator_book_next_btn);
     ui_.administrator_stack_widget->setCurrentIndex(PageIndex::kAdministratorBookPage);
-    ShowBookList(ui_.administrator_book_table_widget);
-    int row = ui_.administrator_book_table_widget->rowCount() - 1;
-    QPushButton *btn = nullptr;
-    for (; row != -1; --row) {
-        btn = new QPushButton{"编辑", this};
-        ui_.administrator_book_table_widget->setCellWidget(
-            row, kAdministratorBookTableEditColumn, btn);
-        BookInfo book_info = BookAt(row);
-        connect(btn, &QPushButton::clicked, this,
-            [row = row, table = ui_.administrator_book_table_widget,
-             t = this, info = book_info]() {
-                BookDialog dialog{false, t};
-                dialog.SetBookInfo(info);
-                dialog.exec();
-                if (dialog.result()) {
-                    qDebug() << dialog.GetBookInfo().name.c_str();
-                }
-            });
-        btn = new QPushButton{"删除", this};
-        ui_.administrator_book_table_widget->setCellWidget(
-            row, kAdministratorBookTableDelColumn, btn);
-        connect(btn, &QPushButton::clicked, this,
-            [row = row, table = ui_.administrator_book_table_widget]() {
-            });
-    }
-    ui_.administrator_book_page_num_lable->setText(
-        QString("第") + QString::number(s_a_book_page_num_) + QString("页"));
+    ShowBookList(ui_.administrator_book_table_widget, false);
 }
 
 void LMSMainWindow::on_administrator_user_btn_clicked() {
+    ::PageRestartImpl(&s_a_user_page_num_, ui_.administrator_user_pre_btn, ui_.administrator_user_next_btn);
     ui_.administrator_stack_widget->setCurrentIndex(PageIndex::kAdministratorUserPage);
-    ShowUserList();
-    ui_.administrator_user_page_num_lable->setText(
-        QString("第") + QString::number(s_a_user_page_num_) + QString("页"));
+    ShowUserList(ui_.administrator_user_table_widget);
 }
 
 void LMSMainWindow::on_administrator_borrow_or_return_btn_clicked() {
+    ::PageRestartImpl(&s_a_borrow_page_num_, ui_.administrator_borrow_pre_btn, ui_.administrator_borrow_next_btn);
     ui_.administrator_stack_widget->setCurrentIndex(PageIndex::kAdministratorBorrowPage);
-    ShowBorrowList(false, ui_.administrator_borrow_table_widget);
-    ui_.administrator_borrow_page_num_lable->setText(
-        QString("第") + QString::number(s_a_borrow_page_num_) + QString("页"));
+    ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
 
 void LMSMainWindow::on_administrator_back_btn_clicked() {
@@ -105,15 +437,15 @@ void LMSMainWindow::on_user_back_btn_clicked() {
     ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
+// 下列为登录注册
+
 void LMSMainWindow::on_user_login_normal_btn_clicked() {
     auto reply = UserLogin(true);
     connect(reply, &QNetworkReply::readyRead, this,
         [reply = reply, stack_widget = ui_.stackedWidget, p = this]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
-            qDebug() << json_doc;
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kNormalUserPage);
-                qDebug() << "登录成功";
             } else {
                 QMessageBox box{p};
                 box.setText("登录失败");
@@ -125,25 +457,26 @@ void LMSMainWindow::on_user_login_normal_btn_clicked() {
     user->SetLoginName(ui_.user_login_account_line_edit->text().toStdString());
     user->SetType(UserType::kBookReader);
     ui_.user_login_name_show_label->setText(user->GetLoginName().c_str());
-    ShowBorrowList(true, ui_.user_borrow_table_widget);
+    ShowBorrowList(ui_.user_borrow_table_widget, true);
 }
 
 void LMSMainWindow::on_user_login_administrator_btn_clicked() {
-    /*auto reply = UserLogin(false);
+    auto reply = UserLogin(false);
     connect(reply, &QNetworkReply::readyRead, this,
-        [reply = reply, stack_widget = ui_.stackedWidget]() {
+        [reply = reply, stack_widget = ui_.stackedWidget, p = this]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kAdministratorPage);
             } else {
-                QMessageBox box;
+                QMessageBox box{p};
                 box.setText("登录失败");
+                box.exec();
             }
-        });*/
+            reply->deleteLater();
+        });
     auto user = UserSingleton::Instance();
     user->SetLoginName(ui_.user_login_account_line_edit->text().toStdString());
     user->SetType(UserType::kManager);
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kAdministratorPage);
 }
 
 void LMSMainWindow::on_user_sign_up_yse_btn_clicked() {
@@ -171,18 +504,27 @@ void LMSMainWindow::on_user_sign_up_yse_btn_clicked() {
     box->deleteLater();
     QJsonDocument json_doc;
     cjs::openssl::Hash h{ cjs::openssl::HashType::kSHA256Type };
-    h.Update(ui_.user_sign_up_account_line_edit->text().toStdString());
-    QJsonObject json_ob;
-    json_ob.insert("action", "insert");
-    json_ob.insert("user_login_name",
-        ui_.user_sign_up_account_line_edit->text());
-    json_ob.insert("user_pwd", h.Final().c_str());
-    json_ob.insert("user_tel", "");
-    json_doc.setObject(json_ob);
-    auto reply = SendPost("text", json_doc);
+    h.Update(ui_.user_sign_up_pwd_line_edit->text().toStdString());
+    json_doc.setObject(
+        {
+            {"action", "insert"},
+            {"user_login_name", ui_.user_sign_up_account_line_edit->text()},
+            {"user_name", ui_.user_sign_up_name_edit->text()},
+            {"user_pwd", h.Final().c_str()},
+            {"user_tel", ui_.user_sign_up_tel_edit->text()}
+        }
+    );
+    auto reply = SendPost(kUserURL, json_doc);
     connect(reply, &QNetworkReply::readyRead,
         this, [reply = reply]() {
-            qDebug() << reply->readAll();
+            QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+            QMessageBox box;
+            if (json_doc["is_inserted"].toBool()) {
+                box.setText("注册成功");
+            } else {
+                box.setText("注册失败");
+            }
+            box.exec();
             reply->deleteLater();
         });
 }
@@ -190,61 +532,159 @@ void LMSMainWindow::on_user_sign_up_yse_btn_clicked() {
 void LMSMainWindow::on_administrator_borrow_sign_btn_clicked() {
     BorrowDialog dialog{ true, this };
     dialog.exec();
+    if (dialog.result()) {
+        auto info = dialog.GetBorrowInfo();
+        QJsonDocument json_doc;
+        json_doc.setObject(
+            {
+                {"action", "borrow"},
+                {"book_class_id", info.book_id},
+                {"reader_id", info.user_id},
+                {"borrow_deadline", info.borrow_deadline.c_str()}
+            }
+        );
+        auto reply = SendPost(kBorrowURL, json_doc);
+        connect(reply, &QNetworkReply::readyRead, this,
+            [reply = reply, p = this, table = ui_.administrator_borrow_table_widget]() {
+                auto json_doc = QJsonDocument::fromJson(reply->readAll());
+                QMessageBox box{p};
+                if (json_doc["is_borrowed"].toBool()) {
+                    box.setText("借阅登记成功");
+                    p->ShowBorrowList(table, false);
+                } else {
+                    box.setText("借阅登记失败");
+                }
+                box.exec();
+                reply->deleteLater();
+            });
+    }
 }
 
-void LMSMainWindow::on_administrator_book_pre_btn_clicked() {
+// 下列为翻页
 
+void LMSMainWindow::on_administrator_book_pre_btn_clicked() {
+    ::PagePreImpl(&s_a_book_page_num_, ui_.administrator_book_pre_btn, ui_.administrator_book_next_btn);
+    InitPageLabel();
+    ShowBookList(ui_.administrator_book_table_widget, false);
 }
 
 void LMSMainWindow::on_administrator_book_next_btn_clicked() {
-
+    ::PageNextImpl(&s_a_book_page_num_, ui_.administrator_book_pre_btn, ui_.administrator_book_next_btn);
+    InitPageLabel();
+    ShowBookList(ui_.administrator_book_table_widget, false);
 }
 
 void LMSMainWindow::on_administrator_user_pre_btn_clicked() {
-
+    ::PagePreImpl(&s_a_user_page_num_, ui_.administrator_user_pre_btn, ui_.administrator_user_next_btn);
+    InitPageLabel();
+    ShowUserList(ui_.administrator_user_table_widget);
 }
 
 void LMSMainWindow::on_administrator_user_next_btn_clicked() {
-
+    ::PageNextImpl(&s_a_user_page_num_, ui_.administrator_user_pre_btn, ui_.administrator_user_next_btn);
+    InitPageLabel();
+    ShowUserList(ui_.administrator_user_table_widget);
 }
 
 void LMSMainWindow::on_administrator_borrow_pre_btn_clicked() {
-
+    ::PagePreImpl(&s_a_borrow_page_num_, ui_.administrator_borrow_pre_btn, ui_.administrator_borrow_next_btn);
+    InitPageLabel();
+    ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
 
 void LMSMainWindow::on_administrator_borrow_next_btn_clicked() {
-
+    ::PageNextImpl(&s_a_borrow_page_num_, ui_.administrator_borrow_pre_btn, ui_.administrator_borrow_next_btn);
+    InitPageLabel();
+    ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
 
-QNetworkReply* LMSMainWindow::UserLogin(bool is_reader) {
-    QJsonDocument json_doc;
-    cjs::openssl::Hash h{cjs::openssl::HashType::kSHA256Type};
-    h.Update(ui_.user_login_pwd_line_edit->text());
-    json_doc.setObject(
-        {
-            {"action", "login"},
-            {"is_reader", is_reader},
-            {"user_login_name", ui_.user_login_account_line_edit->text()},
-            {"user_pwd", h.Final().c_str()}
-        }
-    );
-    qDebug() << json_doc;
-    auto reply = SendPost("user_action", json_doc);
-    //auto reply = SendPost("text", json_doc);
-    return reply;
+void LMSMainWindow::on_user_pre_btn_clicked() {
+    ::PagePreImpl(&s_n_borrow_page_num_, ui_.user_pre_btn, ui_.user_next_btn);
+    InitPageLabel();
+    ShowBorrowList(ui_.user_borrow_table_widget, true);
+}
+
+void LMSMainWindow::on_user_next_btn_clicked() {
+    ::PageNextImpl(&s_n_borrow_page_num_, ui_.user_pre_btn, ui_.user_next_btn);
+    InitPageLabel();
+    ShowBorrowList(ui_.user_borrow_table_widget, true);
+}
+
+void LMSMainWindow::on_search_pre_btn_clicked() {
+    ::PagePreImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn);
+    InitPageLabel();
+    ShowBookList(ui_.search_book_table_widget, true);
+}
+
+void LMSMainWindow::on_search_next_btn_clicked() {
+    ::PageNextImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn);
+    InitPageLabel();
+    ShowBookList(ui_.search_book_table_widget, true);
+}
+
+// 工作按钮
+// 管理员书籍搜索
+void LMSMainWindow::on_administrator_book_do_search_btn_clicked() {
+    ShowBookList(ui_.administrator_book_table_widget, false);
+}
+// 管理员添加书籍
+void LMSMainWindow::on_administrator_book_btn_insert_btn_clicked() {
+    BookDialog dialog{true, this};
+    dialog.exec();
+    if (dialog.result()) {
+        QJsonDocument json_doc;
+        auto info = dialog.GetBookInfo();
+        json_doc.setObject(
+            {
+                {"action", "insert"},
+                {"book_type", info.type},
+                {"book_name", info.name.c_str()},
+                {"book_auther", info.auther.c_str()},
+                {"book_press", info.press.c_str()},
+                {"book_price", info.price},
+                {"book_num", info.num}
+            }
+        );
+        auto reply = SendPost(kBookURL, json_doc);
+        connect(reply, &QNetworkReply::readyRead,
+            [reply = reply, p = this]() {
+                auto json_doc = QJsonDocument::fromJson(reply->readAll());
+                qDebug() << json_doc;
+                QMessageBox box{p};
+                if (json_doc["is_inserted"].toBool()) {
+                    box.setText("添加成功");
+                } else {
+                    box.setText("添加失败");
+                }
+                box.exec();
+                reply->deleteLater();
+            });
+    }
+}
+// 书籍搜索
+void LMSMainWindow::on_search_do_search_btn_clicked() {
+    ShowBookList(ui_.search_book_table_widget, true);
+}
+// 用户搜索
+void LMSMainWindow::on_administrator_user_do_search_btn_clicked() {
+    ShowUserList(ui_.administrator_user_table_widget);
+}
+// 借阅搜索
+void LMSMainWindow::on_administrator_borrow_do_search_btn_clicked() {
+    ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
 
 BookInfo LMSMainWindow::BookAt(int row) const {
     BookInfo info;
     qDebug() << ui_.administrator_book_table_widget->item(row, 0);
     info.id = ui_.administrator_book_table_widget->item(row, 0)->text().toInt();
-    QComboBox * combo_box = dynamic_cast<QComboBox*>(
+    QComboBox* combo_box = dynamic_cast<QComboBox*>(
         ui_.administrator_book_table_widget->cellWidget(row, 1));
-    info.type = static_cast<BookType>(combo_box->currentIndex() + 1);
+    info.type = static_cast<BookType>(combo_box->currentIndex());
     info.name = ui_.administrator_book_table_widget->item(row, 2)->text().toStdString();
     info.auther = ui_.administrator_book_table_widget->item(row, 3)->text().toStdString();
     info.press = ui_.administrator_book_table_widget->item(row, 4)->text().toStdString();
-    info.price =ui_.administrator_book_table_widget->item(row, 5)->text().toDouble();
+    info.price = ui_.administrator_book_table_widget->item(row, 5)->text().toDouble();
     info.num = ui_.administrator_book_table_widget->item(row, 6)->text().toInt();
     return info;
 }
@@ -258,165 +698,197 @@ UserInfo LMSMainWindow::UserAt(int row) const {
     return info;
 }
 
-
-void LMSMainWindow::ShowBookList(QTableWidget *table_widget) {
-    // 发出请求
-    QFile file{R"cpp(for_text/book_list.json)cpp"};
-    file.open(QIODevice::ReadOnly);
-    QJsonDocument json_doc = QJsonDocument::fromJson(file.readAll());
-    file.close();
-    QJsonArray jarr = json_doc.array();
-    table_widget->setRowCount(jarr.size());
-    for (int i = 0; auto value : jarr) {
-        int j = 0;
-        QJsonObject book = value.toObject();
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{QString::number(book["book_id"].toInt())});
-        ++j;
-        QComboBox *combo_box = new QComboBox(this);
-        combo_box->addItem("教育");
-        combo_box->addItem("童话");
-        combo_box->addItem("文学");
-        combo_box->addItem("科幻");
-        combo_box->setCurrentIndex(book["book_type"].toInt() - 1);
-        combo_box->setDisabled(true);
-        table_widget->setCellWidget(i, j, combo_box);
-        ++j;
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{book["book_name"].toString()});
-        ++j;
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{book["book_auther"].toString()});
-        ++j;
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{book["book_press"].toString()});
-        ++j;
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{QString::number(book["book_price"].toDouble())});
-        ++j;
-        table_widget->setItem(i, j, 
-            new QTableWidgetItem{QString::number(book["book_num"].toInt())});
-        ++i;
+BorrowInfo LMSMainWindow::BorrowAt(bool is_reader, int row) const {
+    BorrowInfo info;
+    if (is_reader) {
+        info.book_id = ui_.user_borrow_table_widget->item(row, 0)->text().toInt();
+        info.book_name = ui_.user_borrow_table_widget->item(row, 1)->text().toStdString();
+        info.user_login_name = UserSingleton::Instance()->GetLoginName();
+        info.borrow_deadline = ui_.user_borrow_table_widget->item(row, 2)->text().toStdString();
+        info.price = ui_.user_borrow_table_widget->item(row, 3)->text().toDouble();
+    } else {
+        info.book_id = ui_.administrator_borrow_table_widget->item(row, 0)->text().toInt();
+        info.book_name = ui_.administrator_borrow_table_widget->item(row, 1)->text().toStdString();
+        info.user_id = ui_.administrator_borrow_table_widget->item(row, 2)->text().toInt();
+        info.user_login_name = ui_.administrator_borrow_table_widget->item(row, 3)->text().toStdString();
+        info.borrow_date = dynamic_cast<QDateEdit*>(
+                ui_.administrator_borrow_table_widget->cellWidget(row, 4)
+            )->date().toString(kDateFormat).toStdString();
+        info.borrow_deadline = dynamic_cast<QDateEdit*>(
+                ui_.administrator_borrow_table_widget->cellWidget(row, 5)
+            )->date().toString(kDateFormat).toStdString();
+        info.price = ui_.administrator_borrow_table_widget->item(row, 6)->text().toDouble();
     }
-}
-
-void LMSMainWindow::ShowUserList() {
-    // 发出请求
-    QFile file{ R"cpp(for_text/user_list.json)cpp" };
-    file.open(QIODevice::ReadOnly);
-    QJsonDocument json_doc = QJsonDocument::fromJson(file.readAll());
-    file.close();
-    QJsonArray jarr = json_doc.array();
-    QPushButton *btn = nullptr;
-    ui_.administrator_user_table_widget->setRowCount(jarr.size());
-    for (int i = 0; auto value : jarr) {
-        int j = 0;
-        QJsonObject user = value.toObject();
-        ui_.administrator_user_table_widget->setItem(i, j,
-            new QTableWidgetItem{QString::number(user["reader_id"].toInt())});
-        ++ j;
-        ui_.administrator_user_table_widget->setItem(i, j,
-            new QTableWidgetItem{user["reader_login_name"].toString()});
-        ++ j;
-        ui_.administrator_user_table_widget->setItem(i, j,
-            new QTableWidgetItem{user["reader_name"].toString()});
-        ++ j;
-        ui_.administrator_user_table_widget->setItem(i, j,
-            new QTableWidgetItem{user["reader_tel"].toString()});
-        btn = new QPushButton{ "编辑", this };
-        ui_.administrator_user_table_widget->setCellWidget(
-            i, kAdministratorUserTableEditColumn, btn);
-        connect(btn, &QPushButton::clicked, this,
-            [row = i, table = ui_.administrator_user_table_widget]() {
-            });
-        btn = new QPushButton{ "删除", this };
-        ui_.administrator_user_table_widget->setCellWidget(
-            i, kAdministratorUserTableDelColumn, btn);
-        connect(btn, &QPushButton::clicked, this,
-            [row = i, table = ui_.administrator_user_table_widget]() {
-            });
-        ++i;
-    }
-}
-
-void LMSMainWindow::ShowBorrowList(bool is_reader, QTableWidget* table_widget) {
-    QFile file{ R"cpp(for_text/borrow_list.json)cpp" };
-    file.open(QIODevice::ReadOnly);
-    QJsonDocument json_doc = QJsonDocument::fromJson(file.readAll());
-    file.close();
-    QJsonArray jarr = json_doc.array();
-    table_widget->setRowCount(jarr.size());
-    QPushButton* btn = nullptr;
-    QDateEdit* time_edit = nullptr;
-    for (int i = 0; auto value : jarr) {
-        int j = 0;
-        QJsonObject item = value.toObject();
-        table_widget->setItem(i, j,
-            new QTableWidgetItem{ QString::number(item["book_id"].toInt()) });
-        ++j;
-        table_widget->setItem(i, j,
-            new QTableWidgetItem{ item["book_name"].toString() });
-        ++j;
-        if (!is_reader) { // 用于管理员页面
-            table_widget->setItem(i, j,
-                new QTableWidgetItem{ QString::number(item["reader_id"].toInt()) });
-            ++j;
-            table_widget->setItem(i, j,
-                new QTableWidgetItem{ item["reader_login_name"].toString() });
-            ++j;
-            time_edit = new QDateEdit(this);
-            time_edit->setDate(QDate::fromString(item["borrow_deadline"].toString(), kDateFormat));
-            time_edit->setDisabled(true);
-            table_widget->setCellWidget(i, j, time_edit);
-            ++j;
-        }
-        time_edit = new QDateEdit(this);
-        time_edit->setDate(QDate::fromString(item["borrow_deadline"].toString(), kDateFormat));
-        time_edit->setDisabled(true);
-        table_widget->setCellWidget(i, j, time_edit);
-        ++j;
-        table_widget->setItem(i, j,
-            new QTableWidgetItem{ QString::number(item["book_price"].toDouble()) });
-        if (!is_reader) { // 用于管理员页面
-            btn = new QPushButton{ "还书", this };
-            table_widget->setCellWidget(
-                i, kAdministratorBorrowTableReturnColumn, btn);
-            connect(btn, &QPushButton::clicked, this,
-                [row = i, table = table_widget]() {
-                });
-            btn = new QPushButton{ "异常", this };
-            table_widget->setCellWidget(
-                i, kAdministratorBorrowTableErrorColumn, btn);
-            connect(btn, &QPushButton::clicked, this,
-                [row = i, table = table_widget]() {
-                });
-        }
-        else {
-            btn = new QPushButton{ "还书", this };
-            table_widget->setCellWidget(
-                i, kUserBorrowTableReturnColumn, btn);
-            connect(btn, &QPushButton::clicked, this,
-                [row = i, table = table_widget]() {
-                });
-            btn = new QPushButton{ "还款", this };
-            table_widget->setCellWidget(
-                i, kUserBorrowTablePayColumn, btn);
-            connect(btn, &QPushButton::clicked, this,
-                [row = i, table = table_widget]() {
-                });
-        }
-        ++i;
-    }
+    return info;
 }
 
 QNetworkReply* LMSMainWindow::SendPost(std::string_view url_type,
-        const QJsonDocument &json_doc) {
+    const QJsonDocument& json_doc) {
+    qDebug() << json_doc;
     QString url = QString(kHttpInitStr).arg(kHostName).arg(url_type.data());
-    QNetworkRequest request{url};
+    QNetworkRequest request{ url };
     request.setHeader(QNetworkRequest::ContentTypeHeader,
         QVariant("application/json"));
     QNetworkReply* reply = net_manager_->post(request, json_doc.toJson());
     return reply;
+}
+
+void LMSMainWindow::ShowBookList(QTableWidget* table_widget, bool is_reader) {
+    QJsonDocument json_request_doc;
+    if (is_reader) {
+        // 检查数据是否合法
+        if ((ui_.search_text_edit->toPlainText() != "") &&
+            !(ui_.search_auther_check_box->isChecked() ||
+                ui_.search_id_check_box->isChecked() ||
+                ui_.search_name_check_box->isChecked())) {
+            QMessageBox msg{ this };
+            msg.setText("若要输入搜索内容则必须勾选匹配方式");
+            msg.exec();
+            return;
+        }
+        json_request_doc.setObject({
+                {"action", "search"},
+                {"is_book_id", ui_.search_id_check_box->isChecked()},
+                {"is_book_name", ui_.search_name_check_box->isChecked()},
+                {"is_auther", ui_.search_auther_check_box->isChecked()},
+                {"text", ui_.search_text_edit->toPlainText()},
+                {"type", ui_.search_type_combo_box->currentIndex()},
+                {"page", s_n_book_page_num_}
+            }
+        );
+    }
+    else {
+        if ((ui_.administrator_book_text_edit->toPlainText() != "") &&
+            !(ui_.administrator_book_auther_check_box->isChecked() ||
+                ui_.administrator_book_id_check_box->isChecked() ||
+                ui_.administrator_book_name_check_box->isChecked())) {
+            QMessageBox msg{ this };
+            msg.setText("若要输入搜索内容则必须勾选匹配方式");
+            msg.exec();
+            return;
+        }
+        json_request_doc.setObject({
+                {"action", "search"},
+                {"is_book_id", ui_.administrator_book_id_check_box->isChecked()},
+                {"is_book_name", ui_.administrator_book_name_check_box->isChecked()},
+                {"is_auther", ui_.administrator_book_auther_check_box->isChecked()},
+                {"text", ui_.administrator_book_text_edit->toPlainText()},
+                {"type", ui_.administrator_book_type_combo_box->currentIndex()},
+                {"page", s_a_book_page_num_}
+            }
+        );
+    }
+    auto reply = SendPost(kBookURL, json_request_doc);
+    connect(reply, &QNetworkReply::readyRead, this,
+        [reply = reply, table = table_widget, p = this, flag = is_reader]() {
+            emit p->ShowBookListReplyCBSignal(reply, table, p, flag);
+        });
+}
+
+void LMSMainWindow::ShowUserList(QTableWidget* table) {
+    // 发出请求
+    if ((ui_.administrator_user_text_edit->toPlainText() != "") &&
+        !(ui_.administrator_user_login_name_check_box->isChecked() ||
+            ui_.administrator_user_name_check_box->isChecked() ||
+            ui_.administrator_user_tel_check_box->isChecked())) {
+        QMessageBox msg{ this };
+        msg.setText("若要输入搜索内容则必须勾选匹配方式");
+        msg.exec();
+        return;
+    }
+    QJsonDocument json_doc;
+    json_doc.setObject({
+            {"action", "search"},
+            {"is_reader_login_name", ui_.administrator_user_login_name_check_box->isChecked()},
+            {"is_reader_name", ui_.administrator_user_name_check_box->isChecked()},
+            {"is_reader_tel", ui_.administrator_user_tel_check_box->isChecked()},
+            {"text", ui_.administrator_user_text_edit->toPlainText()},
+            {"page", s_a_user_page_num_}
+        }
+    ); 
+    auto reply = SendPost(kUserURL, json_doc);
+    connect(reply, &QNetworkReply::readyRead, this,
+        [reply = reply, table = table, p = this]() {
+            emit p->ShowUserListReplyCBSignal(reply, table, p);
+        });
+}
+
+void LMSMainWindow::ShowBorrowList(QTableWidget* table_widget, bool is_reader) {
+    if ((ui_.administrator_borrow_text_edit->toPlainText() != "") &&
+        !(ui_.administrator_borrow_user_login_name_check_box->isChecked() ||
+            ui_.administrator_borrow_book_name_check_box->isChecked())) {
+        QMessageBox msg{ this };
+        msg.setText("若要输入搜索内容则必须勾选匹配方式");
+        msg.exec();
+        return;
+    }
+    // 发出请求
+    QJsonDocument json_doc;
+    if (is_reader) {
+        json_doc.setObject(
+            {
+                {"action", "search"},
+                {"is_reader_login_name", false},
+                {"is_reader_name", false},
+                {"is_book_name", false},
+                {"text", ""},
+                {"page", s_n_borrow_page_num_},
+                {"is_reader", is_reader}
+            }
+        );
+    } else {
+        json_doc.setObject(
+            {
+                {"action", "search"},
+                {"is_reader_login_name", ui_.administrator_borrow_user_login_name_check_box->isChecked()},
+                {"is_book_name", ui_.administrator_borrow_book_name_check_box->isChecked()},
+                {"text", ui_.administrator_user_text_edit->toPlainText()},
+                {"page", s_a_borrow_page_num_},
+                {"is_reader", is_reader}
+            }
+        );
+    }
+    auto reply = SendPost(kBorrowURL, json_doc);
+    connect(reply, &QNetworkReply::readyRead, this,
+        [reply = reply, table = table_widget, p = this, flag = is_reader]() {
+            emit p->ShowBorrowListReplyCBSignal(reply, table, p, flag);
+        });
+}
+
+// 私有工作函数
+
+QNetworkReply* LMSMainWindow::UserLogin(bool is_reader) {
+    QJsonDocument json_doc;
+    cjs::openssl::Hash h{ cjs::openssl::HashType::kSHA256Type };
+    h.Update(ui_.user_login_pwd_line_edit->text());
+    json_doc.setObject(
+        {
+            {"action", "login"},
+            {"is_reader", is_reader},
+            {"user_login_name", ui_.user_login_account_line_edit->text()},
+            {"user_pwd", h.Final().c_str()}
+        }
+    );
+    auto reply = SendPost(kUserURL, json_doc);
+    return reply;
+}
+
+void LMSMainWindow::InitPageLabel() {
+    ui_.administrator_book_page_num_lable->setText(
+        QString("第") + QString::number(s_a_book_page_num_) + QString("页")
+    );
+    ui_.administrator_user_page_num_lable->setText(
+        QString("第") + QString::number(s_a_user_page_num_) + QString("页")
+    );
+    ui_.administrator_borrow_page_num_lable->setText(
+        QString("第") + QString::number(s_a_borrow_page_num_) + QString("页")
+    );
+    ui_.search_page_num_lable->setText(
+        QString("第") + QString::number(s_n_book_page_num_) + QString("页")
+    );
+    ui_.user_page_num_lable->setText(
+        QString("第") + QString::number(s_n_borrow_page_num_) + QString("页")
+    );
 }
 
 }

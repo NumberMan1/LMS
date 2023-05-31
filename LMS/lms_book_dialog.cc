@@ -28,6 +28,7 @@ void BookDialog::SetDialogType(const bool is_insert) {
 }
 
 void BookDialog::SetBookInfo(const BookInfo& info) {
+    ui_.id_edit->setText(QString::number(info.id));
     ui_.name_edit->setText(info.name.c_str());
     ui_.type_combo_box->setCurrentIndex(info.type);
     ui_.auther_edit->setText(info.auther.c_str());
@@ -38,6 +39,7 @@ void BookDialog::SetBookInfo(const BookInfo& info) {
 
 BookInfo BookDialog::GetBookInfo() const {
     BookInfo info;
+    info.id = ui_.id_edit->text().toInt();
     info.auther = ui_.auther_edit->text().toStdString();
     info.name = ui_.name_edit->text().toStdString();
     info.press = ui_.press_edit->text().toStdString();

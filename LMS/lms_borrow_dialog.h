@@ -15,6 +15,13 @@ public:
     void SetBorrowInfo(const BorrowInfo& info);
     // 调用前要保证数据合法
     BorrowInfo GetBorrowInfo() const;
+    inline std::string GetErrorText() const {
+        if (flag_) {
+            return std::string{};
+        } else {
+            return ui_.error_edit->toPlainText().toStdString();
+        }
+    }
 signals:
 
 public slots:

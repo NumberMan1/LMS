@@ -13,6 +13,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories("~/vcpkg/installed/x64-linux/include")
 
 file(GLOB_RECURSE fcgi_lib "/home/num/vcpkg/installed/x64-linux/lib/libfcgi*.a")
+file(GLOB_RECURSE src ${PROJECT_SOURCE_DIR}/src "*.cpp" "*.cc")
 
 find_package(OpenSSL REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -20,7 +21,7 @@ find_package(jsoncpp CONFIG REQUIRED)
 find_package(unofficial-mysql-connector-cpp CONFIG REQUIRED)
 
 
-add_executable(${PROJECT_NAME} main.cc)
+add_executable(${PROJECT_NAME} main.cc ${src})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${fcgi_lib})
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${PROJECT_NAME} PRIVATE pthread)

@@ -4,7 +4,7 @@
 #include <QtWidgets/QMainWindow>
 #include <qnetworkaccessmanager.h>
 #include <qnetworkreply.h>
-#include "ui_lms_main_window.h"
+#include <ui_lms_main_window.h>
 
 #include "lms_config.h"
 
@@ -28,12 +28,14 @@ class LMSMainWindow : public QMainWindow {
 public:
     explicit LMSMainWindow(QWidget *parent = nullptr);
     ~LMSMainWindow();
+signals:
+    void ShowBookListReplyCBSignal(QNetworkReply *reply, QTableWidget *table,
+            lms::LMSMainWindow *p, bool is_reader);
+    void ShowUserListReplyCBSignal(QNetworkReply *reply, QTableWidget *table,
+            lms::LMSMainWindow *p);
+    void ShowBorrowListReplyCBSignal(QNetworkReply *reply, QTableWidget *table,
+            lms::LMSMainWindow *p, bool is_reader);
 public slots:
-    // 删除和编辑按钮
-    //void UserEditBtnClickedCB();
-    //void UserDelBtnClickedCB();
-    //void BookEditBtnClickedCB();
-    //void UserDelBtnClickedCB();
 private slots:
     // 下列为页面切换
     // 由默认页面切换到普通搜索书籍页面
@@ -84,18 +86,41 @@ private slots:
     void on_administrator_borrow_pre_btn_clicked();
     // 管理员借书下一页
     void on_administrator_borrow_next_btn_clicked();
-private: // 私有工作函数
-    QNetworkReply* UserLogin(bool is_reader);
+    // 读者借书上一页
+    void on_user_pre_btn_clicked();
+    // 读者借书下一页
+    void on_user_next_btn_clicked();
+    // 普通书籍上一页
+    void on_search_pre_btn_clicked();
+    // 普通书籍下一页
+    void on_search_next_btn_clicked();
+
+    // 工作按钮
+    // 管理员书籍搜索
+    void on_administrator_book_do_search_btn_clicked();
+    // 管理员添加书籍
+    void on_administrator_book_btn_insert_btn_clicked();
+    // 书籍搜索
+    void on_search_do_search_btn_clicked();
+    // 用户搜索
+    void on_administrator_user_do_search_btn_clicked();
+    // 借阅搜索
+    void on_administrator_borrow_do_search_btn_clicked();
+public:
     BookInfo BookAt(int row) const;
     UserInfo UserAt(int row) const;
     BorrowInfo BorrowAt(bool is_reader, int row) const;
-    void ShowBookList(QTableWidget *table_widget);
-    void ShowUserList();
-    void ShowBorrowList(bool is_reader, QTableWidget* table_widget);
     QNetworkReply* SendPost(std::string_view url_type, const QJsonDocument &json_doc);
+    void ShowBookList(QTableWidget *table_widget, bool is_reader);
+    void ShowUserList(QTableWidget *table_widget);
+    void ShowBorrowList(QTableWidget* table_widget, bool is_reader);
+private: // 私有工作函数
+    QNetworkReply* UserLogin(bool is_reader);
+    void InitPageLabel();
 
 private:
     int s_n_book_page_num_ = 1;
+    int s_n_borrow_page_num_ = 1;
     int s_a_book_page_num_ = 1;
     int s_a_user_page_num_ = 1;
     int s_a_borrow_page_num_ = 1;
