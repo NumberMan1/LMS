@@ -96,12 +96,74 @@ void BorrowBookImpl(const Json::Value &data) {
         state.bind(book_class_id, reader_id,
             deadline, ::CalculateBorrowPrice(book_class_id, deadline));
         state.execute();
+        sql = "update lms.T_BOOK set book_num = book_num - 1 where book_class_id = ?";
+        state = sess.sql(sql);
+        state.bind(book_class_id);
+        state.execute();
         sess.commit();
         respond["is_borrowed"] = true;
         FCGI_printf(respond.toStyledString().c_str());
     } catch (...) {
         sess.rollbackTo(save_point);
         respond["is_borrowed"] = false;
+        FCGI_printf(respond.toStyledString().c_str());
+    }
+}
+
+void ReturnBookImpl(const Json::Value &data) {
+    mysqlx::Session sess{lms::kMysqlxURL};
+    sess.startTransaction();
+    auto save_point = sess.setSavepoint();
+    // 确认是否付款
+    mysqlx::string sql{"select borrow_price from lms.T_BORROW_RECORD where book_class_id = ? and reader_id = ? and borrow_deadline = ?"};
+    auto state = sess.sql(sql);
+    int book_class_id = data["book_class_id"].asInt(), reader_id = data["reader_id"].asInt();
+    std::string borrow_deadline = data["borrow_deadline"].asString();
+    state.bind(book_class_id, reader_id, borrow_deadline);
+    Json::Value respond;
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
+    try {
+        if (lms::DoubleIsZero(
+                    static_cast<double>(state.execute().fetchOne().get(0))
+                )) {
+            sql = "delete from lms.T_BORROW_RECORD where book_class_id = ? and reader_id = ? and borrow_deadline = ?";
+            state = sess.sql(sql);
+            state.bind(book_class_id, reader_id, borrow_deadline);
+            state.execute();
+            sql = "update lms.T_BOOK set book_num = book_num + 1 where book_class_id = ?";
+            state = sess.sql(sql);
+            state.bind(book_class_id);
+            state.execute();
+            sess.commit();
+            respond["is_returned"] = true;
+            FCGI_printf(respond.toStyledString().c_str());
+        } else {
+            respond["is_returned"] = false;
+            FCGI_printf(respond.toStyledString().c_str());
+        }
+    } catch (mysqlx::Error &err) {
+        sess.setSavepoint(save_point);
+        respond["is_returned"] = false;
+        FCGI_printf(respond.toStyledString().c_str());
+    }
+}
+
+void PayBookImpl(const Json::Value &data) {
+    mysqlx::Session sess{lms::kMysqlxURL};
+    mysqlx::string sql{"update lms.T_BORROW_RECORD set borrow_price = 0 where book_class_id = ? and reader_id = ? and borrow_deadline = ?"};
+    auto state = sess.sql(sql);
+    state.bind(data["book_class_id"].asInt(),
+        data["reader_id"].asInt(), data["borrow_deadline"].asString());
+    Json::Value respond;
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
+    try {
+        state.execute();
+        respond["is_payed"] = true;
+        FCGI_printf(respond.toStyledString().c_str());
+    } catch (mysqlx::Error &err) {
+        respond["is_payed"] = false;
         FCGI_printf(respond.toStyledString().c_str());
     }
 }
@@ -155,6 +217,10 @@ int main(int argc, char *argv[]) {
             ::SearchBorrowListImpl(json_request_data);
         } else if (action == "borrow") {
             ::BorrowBookImpl(json_request_data);
+        } else if (action == "pay") {
+            ::PayBookImpl(json_request_data);
+        } else if (action == "return") {
+            ::ReturnBookImpl(json_request_data);
         } else if (action == "error") {
             ::ErrorBorrowImpl(json_request_data);
         }

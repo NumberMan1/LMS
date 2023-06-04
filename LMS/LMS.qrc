@@ -1,6 +1,14 @@
 <RCC>
-    <qresource prefix="/LMS_BUTTON">
-        <file>picture/bakcBtn.jpg</file>
-        <file>picture/bk_menu.jpg</file>
-    </qresource>
+  <qresource prefix="/LMS_BUTTON">
+    <file>picture/delete_btn.svg</file>
+    <file>picture/edit_btn.svg</file>
+  </qresource>
+  <qresource prefix="/LMS_BG">
+    <file>picture/book_background.jpg</file>
+    <file>picture/menu_background.jpg</file>
+    <file>picture/sign_background.jpg</file>
+    <file>picture/user_background.jpg</file>
+    <file>picture/user_cell_back_bg.svg</file>
+    <file>picture/user_cell_widget_bg.svg</file>
+  </qresource>
 </RCC>

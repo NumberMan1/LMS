@@ -22,6 +22,14 @@ enum PageIndex {
     kNormalUserPage = 5
 };
 
+enum class PageType {
+    kAdministratorBookPage,
+    kAdministratorUserPage,
+    kAdministratorBorrowPage,
+    kNormalBookSearchPage,
+    kNormalUserPage
+};
+
 class LMSMainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -114,10 +122,10 @@ public:
     void ShowBookList(QTableWidget *table_widget, bool is_reader);
     void ShowUserList(QTableWidget *table_widget);
     void ShowBorrowList(QTableWidget* table_widget, bool is_reader);
+    void SetNextBtnDisable(const PageType &page);
 private: // 私有工作函数
     QNetworkReply* UserLogin(bool is_reader);
     void InitPageLabel();
-
 private:
     int s_n_book_page_num_ = 1;
     int s_n_borrow_page_num_ = 1;

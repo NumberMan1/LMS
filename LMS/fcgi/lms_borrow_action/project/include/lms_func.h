@@ -12,6 +12,8 @@ void SearchBindArgs(const Json::Value &value,
 void SearchBindArgs(const Json::Value &value,
         mysqlx::SqlStatement *state, int arg);
 
+bool DoubleIsZero(double num);
+
 }
 
 #endif

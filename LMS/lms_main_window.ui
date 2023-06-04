@@ -29,7 +29,7 @@
    <string notr="true"/>
   </property>
   <widget class="QWidget" name="central_widget">
-   <widget class="QStackedWidget" name="stackedWidget">
+   <widget class="QStackedWidget" name="stacked_widget">
     <property name="geometry">
      <rect>
       <x>0</x>
@@ -51,12 +51,18 @@
      </size>
     </property>
     <property name="styleSheet">
-     <string notr="true"/>
+     <string notr="true">QStackedWidget#stacked_widget {
+	border-image: url(:/LMS_BG/picture/menu_background.jpg);
+}
+QPushButton#menu_search_book_btn, #menu_sign_in_btn {
+	
+	font: 50pt &quot;华文行楷&quot;;
+}</string>
     </property>
     <property name="currentIndex">
-     <number>4</number>
+     <number>1</number>
     </property>
-    <widget class="QWidget" name="menu_page_1">
+    <widget class="QWidget" name="menu_page1">
      <layout class="QGridLayout" name="gridLayout_3">
       <item row="0" column="0">
        <widget class="QPushButton" name="menu_search_book_btn">
@@ -81,6 +87,9 @@
         <property name="text">
          <string>查询书籍</string>
         </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
       <item row="0" column="1">
@@ -100,18 +109,26 @@
         <property name="text">
          <string>登录</string>
         </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
      </layout>
     </widget>
     <widget class="QWidget" name="search_book_page2">
+     <property name="styleSheet">
+      <string notr="true">QStackedWidget#stacked_widget &gt; QWidget#search_book_page2 {
+	border-image: url(:/LMS_BG/picture/book_background.jpg);
+}</string>
+     </property>
      <widget class="QTableWidget" name="search_book_table_widget">
       <property name="geometry">
        <rect>
-        <x>50</x>
+        <x>40</x>
         <y>120</y>
-        <width>711</width>
-        <height>321</height>
+        <width>731</width>
+        <height>351</height>
        </rect>
       </property>
       <column>
@@ -256,7 +273,7 @@
       <property name="geometry">
        <rect>
         <x>200</x>
-        <y>470</y>
+        <y>490</y>
         <width>401</width>
         <height>26</height>
        </rect>
@@ -316,6 +333,11 @@
      </widget>
     </widget>
     <widget class="QWidget" name="user_login_page3">
+     <property name="styleSheet">
+      <string notr="true">QStackedWidget#stacked_widget &gt; QWidget#user_login_page3 {
+	border-image: url(:/LMS_BG/picture/sign_background.jpg);
+}</string>
+     </property>
      <widget class="QPushButton" name="user_login_back_btn">
       <property name="geometry">
        <rect>
@@ -460,25 +482,32 @@
      <zorder>user_login_back_btn</zorder>
     </widget>
     <widget class="QWidget" name="user_sign_up_page4">
+     <property name="styleSheet">
+      <string notr="true">QStackedWidget#stacked_widget &gt; QWidget#user_sign_up_page4 {
+	border-image: url(:/LMS_BG/picture/sign_background.jpg);
+}</string>
+     </property>
      <widget class="QWidget" name="user_sign_up_widget" native="true">
       <property name="geometry">
        <rect>
         <x>160</x>
         <y>170</y>
         <width>471</width>
-        <height>241</height>
+        <height>231</height>
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">QWidget{ background-color: rgb(252, 255, 242)}</string>
+       <string notr="true">QWidget#user_sign_up_widget {
+	border-image:url(:/LMS_BG/picture/user_cell_widget_bg.svg)
+}</string>
       </property>
       <widget class="QWidget" name="layoutWidget_3">
        <property name="geometry">
         <rect>
-         <x>28</x>
-         <y>190</y>
-         <width>423</width>
-         <height>26</height>
+         <x>30</x>
+         <y>180</y>
+         <width>421</width>
+         <height>34</height>
         </rect>
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -497,6 +526,11 @@
         </item>
         <item>
          <widget class="QPushButton" name="user_sign_up_back_btn">
+          <property name="styleSheet">
+           <string notr="true">width:75;
+height:24;
+border-image:url(:/LMS_BG/picture/user_cell_widget_bg.svg)</string>
+          </property>
           <property name="text">
            <string>返回</string>
           </property>
@@ -517,6 +551,11 @@
         </item>
         <item>
          <widget class="QPushButton" name="user_sign_up_yse_btn">
+          <property name="styleSheet">
+           <string notr="true">width:75;
+height:24;
+border-image:url(:/LMS_BG/picture/user_cell_widget_bg.svg)</string>
+          </property>
           <property name="text">
            <string>注册</string>
           </property>
@@ -694,14 +733,26 @@
        <widget class="QTableWidget" name="administrator_book_table_widget">
         <property name="geometry">
          <rect>
-          <x>0</x>
-          <y>90</y>
-          <width>811</width>
-          <height>321</height>
+          <x>50</x>
+          <y>80</y>
+          <width>711</width>
+          <height>341</height>
          </rect>
         </property>
+        <attribute name="horizontalHeaderCascadingSectionResizes">
+         <bool>false</bool>
+        </attribute>
+        <attribute name="horizontalHeaderMinimumSectionSize">
+         <number>25</number>
+        </attribute>
         <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>88</number>
+         <number>85</number>
+        </attribute>
+        <attribute name="verticalHeaderMinimumSectionSize">
+         <number>23</number>
+        </attribute>
+        <attribute name="verticalHeaderDefaultSectionSize">
+         <number>30</number>
         </attribute>
         <column>
          <property name="text">
@@ -869,8 +920,8 @@
        <widget class="QWidget" name="layoutWidget_8">
         <property name="geometry">
          <rect>
-          <x>260</x>
-          <y>370</y>
+          <x>230</x>
+          <y>440</y>
           <width>301</width>
           <height>26</height>
          </rect>
@@ -997,10 +1048,10 @@
        <widget class="QTableWidget" name="administrator_user_table_widget">
         <property name="geometry">
          <rect>
-          <x>90</x>
-          <y>110</y>
-          <width>641</width>
-          <height>231</height>
+          <x>150</x>
+          <y>90</y>
+          <width>501</width>
+          <height>341</height>
          </rect>
         </property>
         <column>
@@ -1339,7 +1390,12 @@
       </layout>
      </widget>
     </widget>
-    <widget class="QWidget" name="user_page_6">
+    <widget class="QWidget" name="user_page6">
+     <property name="styleSheet">
+      <string notr="true">QStackedWidget#stacked_widget &gt; QWidget#user_page6 {
+	border-image: url(:/LMS_BG/picture/user_background.jpg);
+}</string>
+     </property>
      <widget class="QSplitter" name="splitter">
       <property name="geometry">
        <rect>

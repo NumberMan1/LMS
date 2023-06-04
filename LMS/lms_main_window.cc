@@ -27,13 +27,12 @@ void PagePreImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
     }
 }
 
-void PageNextImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
+void PageNextImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn,
+        QTableWidget *table) {
     ++(*page_num);
     if (!pre_btn->isEnabled()) {
         pre_btn->setEnabled(true);
     }
-    // 判断是否为最后一页
-    next_btn->setDisabled(true);
 }
 
 void PageRestartImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn) {
@@ -42,7 +41,8 @@ void PageRestartImpl(int* page_num, QPushButton* pre_btn, QPushButton* next_btn)
     next_btn->setEnabled(true);
 }
 
-void EditBookFuncImpl(QTableWidget* table, lms::LMSMainWindow *p, lms::BookInfo info) {
+void EditBookFuncImpl(QTableWidget* table, lms::LMSMainWindow *p,
+        const lms::BookInfo &info) {
     QJsonDocument json_doc;
     json_doc.setObject(
         {
@@ -72,7 +72,8 @@ void EditBookFuncImpl(QTableWidget* table, lms::LMSMainWindow *p, lms::BookInfo 
         });
 }
 
-void EditReaderFuncImpl(QTableWidget *table, lms::LMSMainWindow *p, lms::UserInfo info) {
+void EditReaderFuncImpl(QTableWidget *table, lms::LMSMainWindow *p,
+        const lms::UserInfo &info) {
     QJsonDocument json_doc;
     json_doc.setObject(
         {
@@ -130,6 +131,66 @@ void DelImpl(int row, QTableWidget *table, lms::LMSMainWindow *p,
         });
 }
 
+void ReturnBookFuncImpl(int row, QTableWidget *table, lms::LMSMainWindow *p, bool is_reader) {
+    QJsonDocument json_doc;
+    auto info = p->BorrowAt(is_reader, row);
+    if (is_reader) {
+        info.user_id = lms::UserSingleton::Instance()->GetId();
+    }
+    json_doc.setObject(
+        {
+            {"action", "return"},
+            {"book_class_id", info.book_id},
+            {"reader_id", info.user_id},
+            {"borrow_deadline", info.borrow_deadline.c_str()}
+        }
+    );
+    auto reply = p->SendPost(lms::kBorrowURL, json_doc);
+    p->connect(reply, &QNetworkReply::readyRead, p,
+        [p = p, reply = reply, table = table, is_reader = is_reader]() {
+            auto json_doc = QJsonDocument::fromJson(reply->readAll());
+            QMessageBox box{ p };
+            if (json_doc["is_returned"].toBool()) {
+                box.setText("还书成功");
+                p->ShowBorrowList(table, is_reader);
+            }
+            else {
+                box.setText("还书失败, 请检查是否付款");
+            }
+            box.exec();
+            reply->deleteLater();
+        });
+}
+
+void BorrowPayFuncImpl(int row, QTableWidget* table, lms::LMSMainWindow* p) {
+    QJsonDocument json_doc;
+    auto info = p->BorrowAt(true, row);
+    json_doc.setObject(
+        {
+            {"action", "pay"},
+            {"book_class_id", info.book_id},
+            {"reader_id", lms::UserSingleton::Instance()->GetId()},
+            {"borrow_deadline", info.borrow_deadline.c_str()}
+        }
+    );
+    auto reply = p->SendPost(lms::kBorrowURL, json_doc);
+    p->connect(reply, &QNetworkReply::readyRead, p,
+        [p = p, reply = reply, table = table]() {
+            auto json_doc = QJsonDocument::fromJson(reply->readAll());
+            QMessageBox box{ p };
+            if (json_doc["is_payed"].toBool()) {
+                box.setText("还款成功");
+                p->ShowBorrowList(table, true);
+            }
+            else {
+                box.setText("还款失败");
+            }
+            box.exec();
+            reply->deleteLater();
+        });
+}
+
+
 void BorrowErrorImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
     lms::BorrowDialog dialog{false, p};
     dialog.SetBorrowInfo(p->BorrowAt(false, row));
@@ -152,7 +213,6 @@ void BorrowErrorImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
         p->connect(reply, &QNetworkReply::readyRead, p,
             [p = p, reply = reply, table = table]() {
                 auto json_doc = QJsonDocument::fromJson(reply->readAll());
-                qDebug() << json_doc;
                 QMessageBox box{p};
                 if (json_doc["is_solved"].toBool()) {
                     box.setText("异常上报成功");
@@ -177,12 +237,21 @@ void DelUserFuncImpl(int row, QTableWidget *table, lms::LMSMainWindow *p) {
 void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
         lms::LMSMainWindow *p, bool flag) {
     using namespace lms;
-    // 删除之前的数据
     QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    // 删除之前的数据
+    table->setRowCount(0);
     if (!json_doc.isEmpty()) {
-        table->setRowCount(0);
         QJsonArray jarr = json_doc.array();
-        table->setRowCount(jarr.size());
+        auto arr_size = jarr.size();
+        table->setRowCount(arr_size);
+        // 禁止翻下页
+        if (arr_size < 10) {
+            if (flag) {
+                p->SetNextBtnDisable(PageType::kNormalBookSearchPage);
+            } else {
+                p->SetNextBtnDisable(PageType::kAdministratorBookPage);
+            }
+        }
         for (int i = 0; auto value : jarr) {
             int j = 0;
             QJsonObject book = value.toObject();
@@ -214,7 +283,8 @@ void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
                 new QTableWidgetItem{ QString::number(book["book_num"].toInt()) });
             if (!flag) {
                 QPushButton* btn = nullptr;
-                btn = new QPushButton{ "编辑", p };
+                btn = new QPushButton{ p };
+                btn->setStyleSheet("border-image: url(:/LMS_BUTTON/picture/edit_btn.svg)");
                 table->setCellWidget(i, kAdministratorBookTableEditColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
                     [table = table, t = p, row = i]() {
@@ -225,7 +295,8 @@ void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
                             ::EditBookFuncImpl(table, t, dialog.GetBookInfo());
                         }
                     });
-                btn = new QPushButton{ "删除", p };
+                btn = new QPushButton{ p };
+                btn->setStyleSheet("border-image: url(:/LMS_BUTTON/picture/delete_btn.svg)");
                 table->setCellWidget(i, kAdministratorBookTableDelColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
                     [row = i, table = table, p = p]() {
@@ -241,12 +312,21 @@ void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
 void ShowBorrowListReplyCB(QNetworkReply* reply, QTableWidget* table_widget,
     lms::LMSMainWindow* p, bool is_reader) {
     using namespace lms;
-    // 删除之前的数据
     QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    // 删除之前的数据
+    table_widget->setRowCount(0);
     if (!json_doc.isEmpty()) {
-        table_widget->setRowCount(0);
         QJsonArray jarr = json_doc.array();
-        table_widget->setRowCount(jarr.size());
+        auto arr_size = jarr.size();
+        table_widget->setRowCount(arr_size);
+        // 禁止翻下页
+        if (arr_size < 10) {
+            if (is_reader) {
+                p->SetNextBtnDisable(PageType::kNormalUserPage);
+            } else {
+                p->SetNextBtnDisable(PageType::kAdministratorBorrowPage);
+            }
+        }
         QPushButton* btn = nullptr;
         QDateEdit* time_edit = nullptr;
         for (int i = 0; auto value : jarr) {
@@ -283,7 +363,8 @@ void ShowBorrowListReplyCB(QNetworkReply* reply, QTableWidget* table_widget,
                 table_widget->setCellWidget(
                     i, kAdministratorBorrowTableReturnColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
-                    [row = i, table = table_widget]() {
+                    [row = i, table = table_widget, p = p]() {
+                        ::ReturnBookFuncImpl(row ,table ,p, false);
                     });
                 btn = new QPushButton{ "异常", p };
                 table_widget->setCellWidget(
@@ -292,19 +373,20 @@ void ShowBorrowListReplyCB(QNetworkReply* reply, QTableWidget* table_widget,
                     [row = i, table = table_widget, p = p]() {
                         ::BorrowErrorImpl(row, table, p);
                     });
-            }
-            else {
+            } else {
                 btn = new QPushButton{ "还书", p };
                 table_widget->setCellWidget(
                     i, kUserBorrowTableReturnColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
-                    [row = i, table = table_widget]() {
+                    [row = i, table = table_widget, p = p]() {
+                        ::ReturnBookFuncImpl(row ,table, p, true);
                     });
                 btn = new QPushButton{ "还款", p };
                 table_widget->setCellWidget(
                     i, kUserBorrowTablePayColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
-                    [row = i, table = table_widget]() {
+                    [row = i, table = table_widget, p = p]() {
+                        ::BorrowPayFuncImpl(row, table, p);
                     });
             }
             ++i;
@@ -317,11 +399,17 @@ void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
         lms::LMSMainWindow *p) {
     using namespace lms;
     QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
+    // 删除之前的数据
+    table->setRowCount(0);
     if (!json_doc.isEmpty()) {
-        table->setRowCount(0);
         QJsonArray jarr = json_doc.array();
         QPushButton* btn = nullptr;
-        table->setRowCount(jarr.size());
+        auto arr_size = jarr.size();
+        table->setRowCount(arr_size);
+        // 禁止翻下页
+        if (arr_size < 10) {
+            p->SetNextBtnDisable(PageType::kAdministratorUserPage);
+        }
         for (int i = 0; auto value : jarr) {
             int j = 0;
             QJsonObject user = value.toObject();
@@ -336,7 +424,8 @@ void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
             ++j;
             table->setItem(i, j,
                 new QTableWidgetItem{ user["reader_tel"].toString() });
-            btn = new QPushButton{ "编辑", p };
+            btn = new QPushButton{ p };
+            btn->setStyleSheet("border-image: url(:/LMS_BUTTON/picture/edit_btn.svg)");
             table->setCellWidget(
                 i, kAdministratorUserTableEditColumn, btn);
             p->connect(btn, &QPushButton::clicked, p,
@@ -348,7 +437,8 @@ void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
                         ::EditReaderFuncImpl(table, p, dialog.GetUserInfo());
                     }
                 });
-            btn = new QPushButton{ "删除", p };
+            btn = new QPushButton{ p };
+            btn->setStyleSheet("border-image: url(:/LMS_BUTTON/picture/delete_btn.svg)");
             table->setCellWidget(
                 i, kAdministratorUserTableDelColumn, btn);
             p->connect(btn, &QPushButton::clicked, p,
@@ -369,10 +459,17 @@ namespace lms {
 LMSMainWindow::LMSMainWindow(QWidget *parent)
         : QMainWindow(parent) {
     ui_.setupUi(this);
+    ui_.administrator_book_table_widget->setColumnWidth(7, kEditOrDeleteBtnLen);
+    ui_.administrator_book_table_widget->setColumnWidth(8, kEditOrDeleteBtnLen);
+    ui_.administrator_user_table_widget->setColumnWidth(4, kEditOrDeleteBtnLen);
+    ui_.administrator_user_table_widget->setColumnWidth(5, kEditOrDeleteBtnLen);
     InitPageLabel();
     connect(this, &LMSMainWindow::ShowBookListReplyCBSignal, ::ShowBookListReplyCB);
     connect(this, &LMSMainWindow::ShowUserListReplyCBSignal, ::ShowUserListReplyCB);
     connect(this ,&LMSMainWindow::ShowBorrowListReplyCBSignal, ::ShowBorrowListReplyCB);
+    ShowBookList(ui_.administrator_book_table_widget, false);
+    ShowUserList(ui_.administrator_user_table_widget);
+    ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
 
 LMSMainWindow::~LMSMainWindow() {
@@ -383,30 +480,30 @@ LMSMainWindow::~LMSMainWindow() {
 
 void LMSMainWindow::on_menu_search_book_btn_clicked() {
     ::PageRestartImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn);
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kNormalBookSearchPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kNormalBookSearchPage);
     ShowBookList(ui_.search_book_table_widget, true);
     ui_.search_page_num_lable->setText(
         QString("第") + QString::number(s_n_book_page_num_) + QString("页"));
 }
 
 void LMSMainWindow::on_search_back_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
 void LMSMainWindow::on_menu_sign_in_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kUserSignInPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kUserSignInPage);
 }
 
 void LMSMainWindow::on_user_login_sign_up_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kUserSignUpPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kUserSignUpPage);
 }
 
 void LMSMainWindow::on_user_login_back_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
 void LMSMainWindow::on_user_sign_up_back_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
 // 以下为管理员页面切换
@@ -430,11 +527,11 @@ void LMSMainWindow::on_administrator_borrow_or_return_btn_clicked() {
 }
 
 void LMSMainWindow::on_administrator_back_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
 void LMSMainWindow::on_user_back_btn_clicked() {
-    ui_.stackedWidget->setCurrentIndex(PageIndex::kMenuPage);
+    ui_.stacked_widget->setCurrentIndex(PageIndex::kMenuPage);
 }
 
 // 下列为登录注册
@@ -442,10 +539,12 @@ void LMSMainWindow::on_user_back_btn_clicked() {
 void LMSMainWindow::on_user_login_normal_btn_clicked() {
     auto reply = UserLogin(true);
     connect(reply, &QNetworkReply::readyRead, this,
-        [reply = reply, stack_widget = ui_.stackedWidget, p = this]() {
+        [reply = reply, stack_widget = ui_.stacked_widget, p = this]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
+            qDebug() << json_doc;
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kNormalUserPage);
+                UserSingleton::Instance()->SetId(json_doc["user_id"].toInt());
             } else {
                 QMessageBox box{p};
                 box.setText("登录失败");
@@ -463,10 +562,11 @@ void LMSMainWindow::on_user_login_normal_btn_clicked() {
 void LMSMainWindow::on_user_login_administrator_btn_clicked() {
     auto reply = UserLogin(false);
     connect(reply, &QNetworkReply::readyRead, this,
-        [reply = reply, stack_widget = ui_.stackedWidget, p = this]() {
+        [reply = reply, stack_widget = ui_.stacked_widget, p = this]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kAdministratorPage);
+                UserSingleton::Instance()->SetId(json_doc["user_id"].toInt());
             } else {
                 QMessageBox box{p};
                 box.setText("登录失败");
@@ -569,7 +669,7 @@ void LMSMainWindow::on_administrator_book_pre_btn_clicked() {
 }
 
 void LMSMainWindow::on_administrator_book_next_btn_clicked() {
-    ::PageNextImpl(&s_a_book_page_num_, ui_.administrator_book_pre_btn, ui_.administrator_book_next_btn);
+    ::PageNextImpl(&s_a_book_page_num_, ui_.administrator_book_pre_btn, ui_.administrator_book_next_btn, ui_.administrator_book_table_widget);
     InitPageLabel();
     ShowBookList(ui_.administrator_book_table_widget, false);
 }
@@ -581,7 +681,7 @@ void LMSMainWindow::on_administrator_user_pre_btn_clicked() {
 }
 
 void LMSMainWindow::on_administrator_user_next_btn_clicked() {
-    ::PageNextImpl(&s_a_user_page_num_, ui_.administrator_user_pre_btn, ui_.administrator_user_next_btn);
+    ::PageNextImpl(&s_a_user_page_num_, ui_.administrator_user_pre_btn, ui_.administrator_user_next_btn, ui_.administrator_user_table_widget);
     InitPageLabel();
     ShowUserList(ui_.administrator_user_table_widget);
 }
@@ -593,7 +693,7 @@ void LMSMainWindow::on_administrator_borrow_pre_btn_clicked() {
 }
 
 void LMSMainWindow::on_administrator_borrow_next_btn_clicked() {
-    ::PageNextImpl(&s_a_borrow_page_num_, ui_.administrator_borrow_pre_btn, ui_.administrator_borrow_next_btn);
+    ::PageNextImpl(&s_a_borrow_page_num_, ui_.administrator_borrow_pre_btn, ui_.administrator_borrow_next_btn, ui_.administrator_borrow_table_widget);
     InitPageLabel();
     ShowBorrowList(ui_.administrator_borrow_table_widget, false);
 }
@@ -605,7 +705,7 @@ void LMSMainWindow::on_user_pre_btn_clicked() {
 }
 
 void LMSMainWindow::on_user_next_btn_clicked() {
-    ::PageNextImpl(&s_n_borrow_page_num_, ui_.user_pre_btn, ui_.user_next_btn);
+    ::PageNextImpl(&s_n_borrow_page_num_, ui_.user_pre_btn, ui_.user_next_btn, ui_.user_borrow_table_widget);
     InitPageLabel();
     ShowBorrowList(ui_.user_borrow_table_widget, true);
 }
@@ -617,7 +717,7 @@ void LMSMainWindow::on_search_pre_btn_clicked() {
 }
 
 void LMSMainWindow::on_search_next_btn_clicked() {
-    ::PageNextImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn);
+    ::PageNextImpl(&s_n_book_page_num_, ui_.search_pre_btn, ui_.search_next_btn, ui_.search_book_table_widget);
     InitPageLabel();
     ShowBookList(ui_.search_book_table_widget, true);
 }
@@ -704,7 +804,9 @@ BorrowInfo LMSMainWindow::BorrowAt(bool is_reader, int row) const {
         info.book_id = ui_.user_borrow_table_widget->item(row, 0)->text().toInt();
         info.book_name = ui_.user_borrow_table_widget->item(row, 1)->text().toStdString();
         info.user_login_name = UserSingleton::Instance()->GetLoginName();
-        info.borrow_deadline = ui_.user_borrow_table_widget->item(row, 2)->text().toStdString();
+        info.borrow_deadline = dynamic_cast<QDateEdit*>(
+            ui_.user_borrow_table_widget->cellWidget(row, 2)
+            )->date().toString(kDateFormat).toStdString();
         info.price = ui_.user_borrow_table_widget->item(row, 3)->text().toDouble();
     } else {
         info.book_id = ui_.administrator_borrow_table_widget->item(row, 0)->text().toInt();
@@ -853,6 +955,26 @@ void LMSMainWindow::ShowBorrowList(QTableWidget* table_widget, bool is_reader) {
         [reply = reply, table = table_widget, p = this, flag = is_reader]() {
             emit p->ShowBorrowListReplyCBSignal(reply, table, p, flag);
         });
+}
+
+void LMSMainWindow::SetNextBtnDisable(const PageType& page) {
+    switch (page) {
+    case PageType::kAdministratorBookPage:
+        ui_.administrator_book_next_btn->setDisabled(true);
+        break;
+    case PageType::kAdministratorUserPage:
+        ui_.administrator_user_next_btn->setDisabled(true);
+        break;
+    case PageType::kNormalBookSearchPage:
+        ui_.search_next_btn->setDisabled(true);
+        break;
+    case PageType::kAdministratorBorrowPage:
+        ui_.administrator_borrow_next_btn->setDisabled(true);
+        break;
+    case PageType::kNormalUserPage:
+        ui_.user_next_btn->setDisabled(true);
+        break;
+    }
 }
 
 // 私有工作函数

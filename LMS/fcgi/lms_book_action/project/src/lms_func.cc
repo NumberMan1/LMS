@@ -60,5 +60,13 @@ void SearchBindArgs(const Json::Value &value,
         break;
     }
 }
+
+bool DoubleIsZero(double num) {
+    if (std::abs(num) < 1e-8) {
+        return true;
+    } else {
+        return false;
+    }
+}
     
 } // namespace lms

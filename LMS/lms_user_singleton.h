@@ -24,6 +24,12 @@ public:
     inline UserType GetType() {
         return type_;
     }
+    inline void SetId(int id) {
+        id_ = id;
+    }
+    inline int GetId() const {
+        return id_;
+    }
     inline void SetLoginName(const std::string& login_name) {
         login_name_ = login_name;
     }
@@ -33,6 +39,7 @@ public:
 private:
     explicit UserSingleton() = default;
     UserType type_;
+    int id_;
     std::string login_name_;
     static UserSingleton instance_;
 };

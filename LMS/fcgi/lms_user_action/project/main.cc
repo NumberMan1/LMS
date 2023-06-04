@@ -52,10 +52,11 @@ void LoginActionImpl(const Json::Value &json_value) {
     try {
         mysqlx::SqlResult sql_result = sql_state.execute();
         auto row = sql_result.fetchOne();
-        if (!row[0].isNull()) {
-            json_respond["is_login"] = true;
-        } else {
+        if (row[0].isNull()) {
             json_respond["is_login"] = false;
+        } else {
+            json_respond["is_login"] = true;
+            json_respond["user_id"] = static_cast<int>(row[0]);
         }
         FCGI_printf(json_respond.toStyledString().c_str());
     } catch (...) {
@@ -131,24 +132,23 @@ void UpdateReaderImpl(const Json::Value &value) {
     }
 }
 
-void DeleteReaderImpl(const Json::Value &value) {
-    mysqlx::Session mysql_session{lms::kMysqlxURL};
-    mysqlx::string sql_str{"delete from lms.T_READER where reader_id = ?"};
-    mysqlx::SqlStatement sql_state = mysql_session.sql(sql_str);
-    sql_state.bind(value["user_id"].asInt());
-    Json::Value respond;
-    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
-    FCGI_printf("\r\n"); // 标志响应头结束 必须
-    try {
-        auto rt = sql_state.execute();
-        respond["is_deleted"] = true;
-        FCGI_printf(respond.toStyledString().c_str());
-    } catch (...) {
-        respond["is_deleted"] = false;
-        FCGI_printf(respond.toStyledString().c_str());
-    }
-    
-}
+// void DeleteReaderImpl(const Json::Value &value) {
+//     mysqlx::Session mysql_session{lms::kMysqlxURL};
+//     mysqlx::string sql_str{"delete from lms.T_READER where reader_id = ?"};
+//     mysqlx::SqlStatement sql_state = mysql_session.sql(sql_str);
+//     sql_state.bind(value["user_id"].asInt());
+//     Json::Value respond;
+//     FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+//     FCGI_printf("\r\n"); // 标志响应头结束 必须
+//     try {
+//         auto rt = sql_state.execute();
+//         respond["is_deleted"] = true;
+//         FCGI_printf(respond.toStyledString().c_str());
+//     } catch (...) {
+//         respond["is_deleted"] = false;
+//         FCGI_printf(respond.toStyledString().c_str());
+//     }
+// }
 
 }
 

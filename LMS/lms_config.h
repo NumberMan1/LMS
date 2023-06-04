@@ -16,6 +16,8 @@ enum BookType {
     kScienceFiction = 4
 };
 
+constexpr int kEditOrDeleteBtnLen{38};
+
 constexpr auto kDateFormat{"yyyy-MM-dd"};
 constexpr auto kHttpInitStr{"http://%1:80/%2"};
 constexpr auto kMysqlxURL{"mysqlx://num:123@127.0.0.1"};
