@@ -17,7 +17,7 @@ file(GLOB_RECURSE src ${PROJECT_SOURCE_DIR}/src "*.cpp" "*.cc")
 
 find_package(OpenSSL REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
-# find_package(spdlog CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 find_package(unofficial-mysql-connector-cpp CONFIG REQUIRED)
 
 
@@ -26,6 +26,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${fcgi_lib})
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
 target_link_libraries(${PROJECT_NAME} PRIVATE JsonCpp::JsonCpp)
-# target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
 target_link_libraries(${PROJECT_NAME} PRIVATE unofficial::mysql-connector-cpp::connector)
 target_link_libraries(${PROJECT_NAME} PRIVATE resolv)

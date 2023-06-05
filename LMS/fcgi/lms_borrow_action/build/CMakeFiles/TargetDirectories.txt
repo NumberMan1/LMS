@@ -1,3 +1,0 @@
-/home/num/projects/lms_borrow_action/build/CMakeFiles/rebuild_cache.dir
-/home/num/projects/lms_borrow_action/build/CMakeFiles/edit_cache.dir
-/home/num/projects/lms_borrow_action/build/CMakeFiles/lms_borrow_action.dir

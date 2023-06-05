@@ -300,7 +300,13 @@ void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
                 table->setCellWidget(i, kAdministratorBookTableDelColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
                     [row = i, table = table, p = p]() {
-                        ::DelBookFuncImpl(row, table, p);
+                        QMessageBox::StandardButton reply;
+                        reply = QMessageBox::question(p, "重要确认", "你确定要删除这个数据吗",
+                            QMessageBox::Yes | QMessageBox::No);
+                        if (reply == QMessageBox::Yes) {
+                            // 执行删除操作
+                            ::DelBookFuncImpl(row, table, p);
+                        }
                     });
             }
             ++i;
@@ -443,7 +449,13 @@ void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
                 i, kAdministratorUserTableDelColumn, btn);
             p->connect(btn, &QPushButton::clicked, p,
                 [row = i, table = table, p = p]() {
-                    ::DelUserFuncImpl(row, table, p);
+                    QMessageBox::StandardButton reply;
+                    reply = QMessageBox::question(p, "重要确认", "你确定要删除这个数据吗",
+                        QMessageBox::Yes | QMessageBox::No);
+                    if (reply == QMessageBox::Yes) {
+                        // 执行删除操作
+                        ::DelUserFuncImpl(row, table, p);
+                    }
                 });
             ++i;
         }
