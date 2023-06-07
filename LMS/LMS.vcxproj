@@ -90,7 +90,6 @@
   <ItemGroup>
     <ClCompile Include="lms_book_dialog.cc" />
     <ClCompile Include="lms_borrow_dialog.cc" />
-    <ClCompile Include="lms_config.cc" />
     <QtRcc Include="lms.qrc" />
     <QtUic Include="lms_book_edit_dialog.ui" />
     <QtUic Include="lms_borrow_edit_dialog.ui" />

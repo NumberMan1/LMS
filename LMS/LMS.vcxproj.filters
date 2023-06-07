@@ -55,9 +55,6 @@
     <ClCompile Include="lms_main_window.cc">
       <Filter>Source Files\widget</Filter>
     </ClCompile>
-    <ClCompile Include="lms_config.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="lms_user_singleton.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
