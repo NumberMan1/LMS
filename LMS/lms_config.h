@@ -82,4 +82,14 @@ struct BorrowInfo {
 
 }
 
+struct BorrowInfo {
+    int book_id{ 0 };
+    std::string book_name;
+    int user_id{ 0 };
+    std::string user_login_name;
+    std::string borrow_date;
+    std::string borrow_deadline;
+    double price{ 0 };
+};
+
 #endif // !LMS_LMS_CONFIG_H
