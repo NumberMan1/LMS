@@ -7,14 +7,12 @@
 namespace lms {
 
 void SearchBindArgs(const Json::Value &value,
-        mysqlx::SqlStatement *state, bool type_is_all, int arg_num) noexcept;
+        mysqlx::SqlStatement *state, bool type_is_all, int arg_num);
 
 void SearchBindArgs(const Json::Value &value,
-        mysqlx::SqlStatement *state, int arg) noexcept;
+        mysqlx::SqlStatement *state, int arg);
 
-bool DoubleIsZero(double num) noexcept;
-
-std::string GetNow() noexcept;
+bool DoubleIsZero(double num);
 
 }
 

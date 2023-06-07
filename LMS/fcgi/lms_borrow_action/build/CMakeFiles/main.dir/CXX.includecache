@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/num/projects/fcgi/project/main.cc
+cstdlib
+-
+fastcgi/fcgi_stdio.h
+-
+string
+-
+fstream
+-
+iostream
+-
+
+/home/num/vcpkg/installed/x64-linux/include/fastcgi/fcgi_stdio.h
+stdio.h
+-
+sys/types.h
+-
+fcgiapp.h
+/home/num/vcpkg/installed/x64-linux/include/fastcgi/fcgiapp.h
+
+/home/num/vcpkg/installed/x64-linux/include/fastcgi/fcgiapp.h
+stdarg.h
+-
+varargs.h
+-
+

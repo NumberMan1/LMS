@@ -60,7 +60,7 @@ QPushButton#menu_search_book_btn, #menu_sign_in_btn {
 }</string>
     </property>
     <property name="currentIndex">
-     <number>4</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="menu_page1">
      <layout class="QGridLayout" name="gridLayout_3">
@@ -665,7 +665,7 @@ border-image:url(:/LMS_BG/picture/user_cell_widget_bg.svg)</string>
        </rect>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="administrator_book_page1">
        <widget class="QWidget" name="layoutWidget_4">

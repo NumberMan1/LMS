@@ -1,6 +1,4 @@
 #include <fastcgi/fcgi_stdio.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/daily_file_sink.h>
 #include <string>
 #include <fstream>
 #include <json/json.h>
@@ -8,13 +6,8 @@
 
 #include "lms_config.h"
 #include "lms_func.h"
-#include "cjs/thread_pool.hpp"
 
 namespace {
-
-Json::Value stdout_respond_json; // 用于主线程发送的数据
-std::mutex stdout_respond_json_mutex; // 用于保护FCGI_printf用的json数据
-std::condition_variable stdout_cv; // 用于同步FCGI_printf
 
 void SearchBookSqlTextInit(const Json::Value json_value, mysqlx::string *mysql_sql, int *text_num) {
     using mstring = mysqlx::string;
@@ -77,58 +70,28 @@ void SearchBookImpl(const Json::Value &json_value) {
         json_respond[i]["book_num"] = static_cast<int>(row[6]);
         ++i;
     }
-    std::scoped_lock lock{::stdout_respond_json_mutex};
-    ::stdout_respond_json = json_respond;
-    ::stdout_cv.notify_one();
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
+    FCGI_printf(json_respond.toStyledString().c_str());
 }
 
 void UpdateBookImpl(const Json::Value &json) {
     mysqlx::Session mysql_session{lms::kMysqlxURL};
     mysqlx::string sql_str{"update lms.T_BOOK set book_name = ?, book_type = ?, book_auther = ?, book_press = ?,  book_price = ?, book_num = ? where book_class_id = ?"};
     auto sql_st = mysql_session.sql(sql_str);
-    std::string book_name = json["book_name"].asString(),
-        book_auther = json["book_auther"].asString(),
-        book_press = json["book_press"].asString();
-    int book_num = json["book_num"].asInt(),
-        book_type = json["book_type"].asInt(),
-        book_id = json["book_id"].asInt();
-    double book_price = json["book_price"].asDouble();
-    sql_st.bind(book_name, book_type, book_auther,
-        book_press, book_price, book_num, book_id);
+    sql_st.bind(json["book_name"].asString(), json["book_type"].asInt(),
+        json["book_auther"].asString(), json["book_press"].asString(),
+        json["book_price"].asDouble(), json["book_num"].asInt(), json["book_id"].asInt());
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
-        sql_st.execute();
+        auto sql_rt = sql_st.execute();
         respond["is_updated"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto logger = spdlog::daily_logger_mt("In UpdateBookImpl func",
-                lms::kBookInfoLoggerPath);
-        logger->info(R"cpp(书籍id为{}其书名 作者名 出版社 价格 数量被更新分别为
-{}, {}, {}, {}, {}, )cpp", book_id, book_name, book_auther, book_press, book_price, book_num);
-        spdlog::drop(logger->name());
-    } catch (std::exception &err) {
-        respond["is_updated"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In UpdateBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     } catch (...) {
         respond["is_updated"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In UpdateBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error("未捕获的未知的异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
@@ -140,7 +103,8 @@ void InsertBookImpl(const Json::Value &value) {
     sql_state.bind(value["book_name"].asString(), value["book_type"].asInt(), value["book_auther"].asString(), value["book_press"].asString());
     auto sql_rt = sql_state.execute();
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     if (sql_rt.count()) { // 返回错误: 不为0
         respond["is_inserted"] = false;
         FCGI_printf(respond.toStyledString().c_str());
@@ -148,46 +112,16 @@ void InsertBookImpl(const Json::Value &value) {
     }
     sql_str = "insert into lms.T_BOOK (book_name, book_type, book_auther, book_press, book_price, book_num) VALUE (?, ?, ?, ?, ?, ?)";
     sql_state = mysql_ses.sql(sql_str);
-    std::string book_name = value["book_name"].asString(),
-        book_auther = value["book_auther"].asString(),
-        book_press = value["book_press"].asString();
-    int book_num = value["book_num"].asInt(),
-        book_type = value["book_type"].asInt();
-    double book_price = value["book_price"].asDouble();
-    sql_state.bind(book_name, book_type, book_auther,
-        book_press, book_price, book_num);
+    sql_state.bind(value["book_name"].asString(), value["book_type"].asInt(),
+        value["book_auther"].asString(), value["book_press"].asString(),
+        value["book_price"].asDouble(), value["book_num"].asInt());
     try {
-        sql_state.execute();
+        sql_rt = sql_state.execute();
         respond["is_inserted"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto logger = spdlog::daily_logger_mt("In InsertBookImpl func",
-                lms::kBookInfoLoggerPath);
-        logger->info("添加了新书{}, 作者为{}, 出版社为{}, 价格为{}, 数量为{}",
-            book_name, book_auther, book_press, book_price, book_num);
-        spdlog::drop(logger->name());
-    } catch (std::exception &err) {
-        respond["is_inserted"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In InsertBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     } catch (...) {
         respond["is_inserted"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In InsertBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error("未捕获的未知的异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
@@ -195,49 +129,24 @@ void DeleteBookImpl(const Json::Value &value) {
     mysqlx::Session mysql_ses{lms::kMysqlxURL};
     mysqlx::string sql_str{"delete from lms.T_BOOK where book_class_id = ?"};
     mysqlx::SqlStatement sql_state = mysql_ses.sql(sql_str);
-    int book_id = value["book_id"].asInt();
-    sql_state.bind(book_id);
+      
+    sql_state.bind(value["book_id"].asInt());
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
-        sql_state.execute();
+        auto sql_rt = sql_state.execute();
         respond["is_deleted"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto logger = spdlog::daily_logger_mt("In DeleteBookImpl func",
-                lms::kBookInfoLoggerPath);
-        logger->info("书籍id为{}被删除",book_id);
-        spdlog::drop(logger->name());
-    } catch (std::exception &err) {
-        respond["is_deleted"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In DeleteBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     } catch (...) {
         respond["is_deleted"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In DeleteBookImpl func",
-                lms::kBookErrorLoggerPath);
-        error_logger->error("未捕获的未知的异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
 }
 
 int main(int argc, char *argv[]) {
-    cjs::ThreadPool thread_pool{};
-    spdlog::flush_every(std::chrono::seconds(3));
 	//阻塞等待并监听某个端口，等待Nginx将数据发过来
 	while (FCGI_Accept() >= 0) {
 		//如果想得到数据，可从stdin去读，实际上从Nginx上去读
@@ -260,31 +169,14 @@ int main(int argc, char *argv[]) {
         Json::Value json_request_data;
         reader.parse(request_data.data(), json_request_data);
         std::string action = json_request_data["action"].asString();
-        try {
-            if (action == "search") {
-                thread_pool.SubmitTask(::SearchBookImpl, std::move(json_request_data));
-            } else if (action == "update") {
-                thread_pool.SubmitTask(::UpdateBookImpl, std::move(json_request_data));
-            } else if (action == "insert") {
-                thread_pool.SubmitTask(::InsertBookImpl, std::move(json_request_data));
-            } else if (action == "delete") {
-                thread_pool.SubmitTask(::DeleteBookImpl, std::move(json_request_data));
-            }
-            std::unique_lock main_unique_lock{::stdout_respond_json_mutex};
-            ::stdout_cv.wait(main_unique_lock);
-            FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
-            FCGI_printf("\r\n"); // 标志响应头结束 必须
-            FCGI_printf(::stdout_respond_json.toStyledString().c_str());
-        } catch (std::exception &err) {
-            auto logger = spdlog::daily_logger_mt("In main func",
-                    lms::kBookErrorLoggerPath);
-            logger->error(err.what());
-            spdlog::drop(logger->name());
-        } catch (...) {
-            auto logger = spdlog::daily_logger_mt("In main func",
-                    lms::kBookErrorLoggerPath);
-            logger->error("未捕获的未知的异常");
-            spdlog::drop(logger->name());
+        if (action == "search") {
+            ::SearchBookImpl(json_request_data);
+        } else if (action == "update") {
+            ::UpdateBookImpl(json_request_data);
+        } else if (action == "insert") {
+            ::InsertBookImpl(json_request_data);
+        } else if (action == "delete") {
+            ::DeleteBookImpl(json_request_data);
         }
 	}
 	return 0;

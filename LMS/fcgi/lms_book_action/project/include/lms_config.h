@@ -18,12 +18,6 @@ enum BookType {
 
 constexpr int kEditOrDeleteBtnLen{38};
 
-constexpr auto kBorrowErrorLoggerPath{"/home/num/logs/borrow_error.log"};
-constexpr auto kBorrowInfoLoggerPath{"/home/num/logs/borrow_info.log"};
-constexpr auto kBookErrorLoggerPath{"/home/num/logs/book_error.log"};
-constexpr auto kBookInfoLoggerPath{"/home/num/logs/book_info.log"};
-constexpr auto kUserErrorLoggerPath{"/home/num/logs/user_error.log"};
-constexpr auto kUserInfoLoggerPath{"/home/num/logs/user_info.log"};
 constexpr auto kDateFormat{"yyyy-MM-dd"};
 constexpr auto kHttpInitStr{"http://%1:80/%2"};
 constexpr auto kMysqlxURL{"mysqlx://num:123@127.0.0.1"};

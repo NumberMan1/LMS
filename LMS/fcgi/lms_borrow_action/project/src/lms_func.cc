@@ -2,8 +2,8 @@
 
 namespace lms {
 
-void SearchBindArgs(const Json::Value &value, mysqlx::SqlStatement *state,
-        bool type_is_all, int arg_num) noexcept {
+void SearchBindArgs(const Json::Value &value,
+        mysqlx::SqlStatement *state, bool type_is_all, int arg_num) {
     std::string text{"%"};
     text += value["text"].asString();
     text += '%';
@@ -40,8 +40,8 @@ void SearchBindArgs(const Json::Value &value, mysqlx::SqlStatement *state,
     }
 }
 
-void SearchBindArgs(const Json::Value &value, mysqlx::SqlStatement *state,
-        int arg_num) noexcept {
+void SearchBindArgs(const Json::Value &value,
+        mysqlx::SqlStatement *state, int arg_num) {
     std::string text{"%"};
     text += value["text"].asString();
     text += '%';
@@ -61,24 +61,12 @@ void SearchBindArgs(const Json::Value &value, mysqlx::SqlStatement *state,
     }
 }
 
-bool DoubleIsZero(double num) noexcept {
+bool DoubleIsZero(double num) {
     if (std::abs(num) < 1e-8) {
         return true;
     } else {
         return false;
     }
-}
-
-std::string GetNow() noexcept {
-    using namespace std::chrono;
-    auto &&time = system_clock::now();
-    time_t &&tt = system_clock::to_time_t(time);
-    auto &&time_tm = localtime(&tt);
-    std::string str;
-    str.resize(10);
-    std::sprintf(str.data(), "%d-%02d-%02d",
-        time_tm->tm_year + 1900, time_tm->tm_mon + 1, time_tm->tm_mday);
-    return str;
 }
     
 } // namespace lms

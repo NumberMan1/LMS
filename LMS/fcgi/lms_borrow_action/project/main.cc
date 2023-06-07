@@ -1,20 +1,14 @@
 #include <fastcgi/fcgi_stdio.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/daily_file_sink.h>
 #include <string>
 #include <fstream>
 #include <json/json.h>
 #include <mysqlx/xdevapi.h>
+#include <chrono>
 
 #include "lms_config.h"
 #include "lms_func.h"
-#include "cjs/thread_pool.hpp"
 
 namespace {
-
-Json::Value stdout_respond_json; // 用于主线程发送的数据
-std::mutex stdout_respond_json_mutex; // 用于保护FCGI_printf用的json数据
-std::condition_variable stdout_cv; // 用于同步FCGI_printf
 
 void SearchBorrowSqlTextInit(const Json::Value &json_value,
         mysqlx::string *sql, int *args_num) {
@@ -34,7 +28,7 @@ void SearchBorrowSqlTextInit(const Json::Value &json_value,
     }
 }
 
-void SearchBorrowListImpl(const Json::Value data) noexcept {
+void SearchBorrowListImpl(const Json::Value &data) {
     using mstring = mysqlx::string;
     mysqlx::Session sess{lms::kMysqlxURL};
     mysqlx::string sql{R"cpp(select book_class_id, reader_id, date_format(borrow_date, '%Y-%m-%d'), date_format(borrow_deadline, '%Y-%m-%d'), borrow_price from lms.T_BORROW_RECORD)cpp"};
@@ -67,9 +61,9 @@ void SearchBorrowListImpl(const Json::Value data) noexcept {
         json_respond[i]["book_price"] = static_cast<double>(borrow_row[4]);
         ++i;
     }
-    std::scoped_lock lock(::stdout_respond_json_mutex);
-    ::stdout_respond_json = json_respond;
-    ::stdout_cv.notify_one();
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
+    FCGI_printf(json_respond.toStyledString().c_str());
 }
 
 double CalculateBorrowPrice(int book_class_id, const std::string &deadline) {
@@ -86,7 +80,7 @@ double CalculateBorrowPrice(int book_class_id, const std::string &deadline) {
     return borrow_price;
 }
 
-void BorrowBookImpl(const Json::Value data) noexcept {
+void BorrowBookImpl(const Json::Value &data) {
     mysqlx::Session sess{lms::kMysqlxURL};
     sess.startTransaction();
     mysqlx::string save_point = sess.setSavepoint();
@@ -96,7 +90,8 @@ void BorrowBookImpl(const Json::Value data) noexcept {
     int reader_id = data["reader_id"].asInt();
     std::string deadline = data["borrow_deadline"].asString();
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
         state.bind(book_class_id, reader_id,
             deadline, ::CalculateBorrowPrice(book_class_id, deadline));
@@ -107,42 +102,15 @@ void BorrowBookImpl(const Json::Value data) noexcept {
         state.execute();
         sess.commit();
         respond["is_borrowed"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto info_logger = spdlog::daily_logger_mt("In BorrowBookImpl func",
-                lms::kBorrowInfoLoggerPath);
-        info_logger->info("读者id为{}借阅了书籍id为{}的书, 从{}到{}",
-            reader_id, book_class_id,
-            lms::GetNow(), deadline);
-        spdlog::drop(info_logger->name());
-    } catch (std::exception &err) {
-        sess.rollbackTo(save_point);
-        respond["is_borrowed"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In BorrowBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     } catch (...) {
         sess.rollbackTo(save_point);
         respond["is_borrowed"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In BorrowBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error("未捕获的未知异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
-void ReturnBookImpl(const Json::Value data) noexcept {
+void ReturnBookImpl(const Json::Value &data) {
     mysqlx::Session sess{lms::kMysqlxURL};
     sess.startTransaction();
     auto save_point = sess.setSavepoint();
@@ -153,12 +121,12 @@ void ReturnBookImpl(const Json::Value data) noexcept {
     std::string borrow_deadline = data["borrow_deadline"].asString();
     state.bind(book_class_id, reader_id, borrow_deadline);
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
-        double price = static_cast<double>(state.execute().fetchOne().get(0));
-        auto info_logger = spdlog::daily_logger_mt("In ReturnBookImpl func",
-                lms::kBorrowInfoLoggerPath);
-        if (lms::DoubleIsZero(price)) {
+        if (lms::DoubleIsZero(
+                    static_cast<double>(state.execute().fetchOne().get(0))
+                )) {
             sql = "delete from lms.T_BORROW_RECORD where book_class_id = ? and reader_id = ? and borrow_deadline = ?";
             state = sess.sql(sql);
             state.bind(book_class_id, reader_id, borrow_deadline);
@@ -169,146 +137,60 @@ void ReturnBookImpl(const Json::Value data) noexcept {
             state.execute();
             sess.commit();
             respond["is_returned"] = true;
-            lock.lock();
-            ::stdout_respond_json = respond;
-            lock.unlock();
-            ::stdout_cv.notify_one();
-            info_logger->info("读者id为{}归还书籍id为{}",
-                reader_id, book_class_id);
+            FCGI_printf(respond.toStyledString().c_str());
         } else {
             respond["is_returned"] = false;
-            lock.lock();
-            ::stdout_respond_json = respond;
-            lock.unlock();
-            ::stdout_cv.notify_one();
-            info_logger->info("读者id为{}尝试归还书籍id为{}, 却无付款价格{}",
-                reader_id, book_class_id, price);
+            FCGI_printf(respond.toStyledString().c_str());
         }
-        spdlog::drop(info_logger->name());
-    } catch (std::exception &err) {
+    } catch (mysqlx::Error &err) {
         sess.setSavepoint(save_point);
         respond["is_returned"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In ReturnBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
-    } catch (...) {
-        sess.setSavepoint(save_point);
-        respond["is_returned"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In ReturnBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error("未捕获的未知异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
-void PayBookImpl(const Json::Value data) noexcept {
+void PayBookImpl(const Json::Value &data) {
     mysqlx::Session sess{lms::kMysqlxURL};
     mysqlx::string sql{"update lms.T_BORROW_RECORD set borrow_price = 0 where book_class_id = ? and reader_id = ? and borrow_deadline = ?"};
     auto state = sess.sql(sql);
-    int book_class_id = data["book_class_id"].asInt(),
-        reader_id = data["reader_id"].asInt();
-    std::string deadline = data["borrow_deadline"].asString();
-    state.bind(book_class_id, reader_id, deadline);
+    state.bind(data["book_class_id"].asInt(),
+        data["reader_id"].asInt(), data["borrow_deadline"].asString());
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
         state.execute();
         respond["is_payed"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto info_logger = spdlog::daily_logger_mt("In PayBookImpl func",
-                lms::kBorrowInfoLoggerPath);
-        info_logger->info("用户id为{}付款了书籍id为{}其期限为{}",
-            reader_id, book_class_id, deadline);
-        spdlog::drop(info_logger->name());
-    } catch (std::exception &err) {
+        FCGI_printf(respond.toStyledString().c_str());
+    } catch (mysqlx::Error &err) {
         respond["is_payed"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In PayBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
-    } catch (...) {
-        respond["is_payed"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In PayBookImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error("未捕获的未知异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
-void ErrorBorrowImpl(const Json::Value data) noexcept {
+void ErrorBorrowImpl(const Json::Value &data) {
     mysqlx::Session sess{lms::kMysqlxURL};
     mysqlx::string sql{"update lms.T_BORROW_RECORD set borrow_price = ?, borrow_deadline = ?, borrow_text = ? where book_class_id = ? and reader_id = ? and borrow_date = ?"};
     auto state = sess.sql(sql);
-    double price = data["borrow_price"].asDouble();
-    std::string deadline = data["borrow_deadline"].asString(),
-        borrow_date = data["borrow_date"].asString(),
-        error_text = data["error_text"].asString();
-    int book_class_id = data["book_class_id"].asInt(),
-        reader_id = data["reader_id"].asInt();
-    state.bind(price, deadline, error_text,
-        book_class_id, reader_id, borrow_date);
+    state.bind(data["borrow_price"].asDouble(), data["borrow_deadline"].asString(),
+        data["error_text"].asString(), data["book_class_id"].asInt(),
+        data["reader_id"].asInt(), data["borrow_date"].asString());
     Json::Value respond;
-    std::unique_lock lock{::stdout_respond_json_mutex, std::defer_lock};
+    FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
+    FCGI_printf("\r\n"); // 标志响应头结束 必须
     try {
         state.execute();
         respond["is_solved"] = true;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto info_logger = spdlog::daily_logger_mt("In ErrorBorrowImpl func",
-                lms::kBorrowInfoLoggerPath);
-        info_logger->info(R"cpp(该借阅记录(读者id为{}借阅书籍id为{}从{}到{})其借阅价格被修改为{}
-其修改备注为{})cpp", reader_id, book_class_id, borrow_date, deadline, price, error_text);
-        spdlog::drop(info_logger->name());
-    } catch (std::exception &err) {
+        FCGI_printf(respond.toStyledString().c_str());
+    } catch (mysqlx::Error &err) {
         respond["is_solved"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In ErrorBorrowImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error(err.what());
-        spdlog::drop(error_logger->name());
-    } catch (...) {
-        respond["is_solved"] = false;
-        lock.lock();
-        ::stdout_respond_json = respond;
-        lock.unlock();
-        ::stdout_cv.notify_one();
-        auto error_logger = spdlog::daily_logger_mt("In ErrorBorrowImpl func",
-                lms::kBorrowErrorLoggerPath);
-        error_logger->error("未捕获的未知异常");
-        spdlog::drop(error_logger->name());
+        FCGI_printf(respond.toStyledString().c_str());
     }
 }
 
 }
 
 int main(int argc, char *argv[]) {
-    spdlog::flush_every(std::chrono::seconds(3));
-    cjs::ThreadPool thread_pool{};
 	//阻塞等待并监听某个端口，等待Nginx将数据发过来
 	while (FCGI_Accept() >= 0) {
 		//如果想得到数据，可从stdin去读，实际上从Nginx上去读
@@ -331,34 +213,16 @@ int main(int argc, char *argv[]) {
         Json::Value json_request_data;
         reader.parse(request_data.data(), json_request_data);
         std::string action = json_request_data["action"].asString();
-        try {
-            if (action == "search") {
-                thread_pool.SubmitTask(::SearchBorrowListImpl, std::move(json_request_data));
-            } else if (action == "borrow") {
-                thread_pool.SubmitTask(::BorrowBookImpl, std::move(json_request_data));
-            } else if (action == "pay") {
-                thread_pool.SubmitTask(::PayBookImpl, std::move(json_request_data));
-            } else if (action == "return") {
-                thread_pool.SubmitTask(::ReturnBookImpl, std::move(json_request_data));
-            } else if (action == "error") {
-                thread_pool.SubmitTask(::ErrorBorrowImpl, std::move(json_request_data));
-            }
-            // 主线程输出结果
-            std::unique_lock main_unique_lock(::stdout_respond_json_mutex);
-            stdout_cv.wait(main_unique_lock);
-            FCGI_printf("Content-type: application/json\r\n"); // 传出数据格式 必须
-            FCGI_printf("\r\n"); // 标志响应头结束 必须
-            FCGI_printf(stdout_respond_json.toStyledString().c_str());
-        } catch (std::exception &err) {
-            auto logger = spdlog::daily_logger_mt("In main func",
-                    lms::kBorrowErrorLoggerPath);
-            logger->error(err.what());
-            spdlog::drop(logger->name());
-        } catch (...) {
-            auto logger = spdlog::daily_logger_mt("In main func",
-                    lms::kBorrowErrorLoggerPath);
-            logger->error("未知的未捕获的错误");
-            spdlog::drop(logger->name());
+        if (action == "search") {
+            ::SearchBorrowListImpl(json_request_data);
+        } else if (action == "borrow") {
+            ::BorrowBookImpl(json_request_data);
+        } else if (action == "pay") {
+            ::PayBookImpl(json_request_data);
+        } else if (action == "return") {
+            ::ReturnBookImpl(json_request_data);
+        } else if (action == "error") {
+            ::ErrorBorrowImpl(json_request_data);
         }
 	}
 	return 0;
