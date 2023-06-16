@@ -300,7 +300,12 @@ void ShowBookListReplyCB(QNetworkReply *reply, QTableWidget *table,
                 table->setCellWidget(i, kAdministratorBookTableDelColumn, btn);
                 p->connect(btn, &QPushButton::clicked, p,
                     [row = i, table = table, p = p]() {
-                        ::DelBookFuncImpl(row, table, p);
+                        auto choice = 
+                            QMessageBox::question(p, "确认",  "你确定要执行该操作吗？", 
+                                QMessageBox::Yes | QMessageBox::No);
+                        if (choice == QMessageBox::Yes) {
+                            ::DelBookFuncImpl(row, table, p);
+                        }
                     });
             }
             ++i;
@@ -443,7 +448,12 @@ void ShowUserListReplyCB(QNetworkReply* reply, QTableWidget *table,
                 i, kAdministratorUserTableDelColumn, btn);
             p->connect(btn, &QPushButton::clicked, p,
                 [row = i, table = table, p = p]() {
-                    ::DelUserFuncImpl(row, table, p);
+                    auto choice =
+                        QMessageBox::question(p, "确认", "你确定要执行该操作吗？",
+                            QMessageBox::Yes | QMessageBox::No);
+                    if (choice == QMessageBox::Yes) {
+                        ::DelUserFuncImpl(row, table, p);
+                    }
                 });
             ++i;
         }
