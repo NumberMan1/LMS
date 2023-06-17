@@ -808,8 +808,8 @@ UserInfo LMSMainWindow::UserAt(int row) const {
     return info;
 }
 
-BorrowInfo LMSMainWindow::BorrowAt(bool is_reader, int row) const {
-    BorrowInfo info;
+lms::BorrowInfo LMSMainWindow::BorrowAt(bool is_reader, int row) const {
+    lms::BorrowInfo info;
     if (is_reader) {
         info.book_id = ui_.user_borrow_table_widget->item(row, 0)->text().toInt();
         info.book_name = ui_.user_borrow_table_widget->item(row, 1)->text().toStdString();
