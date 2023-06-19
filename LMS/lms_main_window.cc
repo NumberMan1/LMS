@@ -1013,7 +1013,7 @@ void LMSMainWindow::ShowBorrowList(QTableWidget* table_widget, bool is_reader) {
                 {"action", "search"},
                 {"is_reader_login_name", ui_.administrator_borrow_user_login_name_check_box->isChecked()},
                 {"is_book_name", ui_.administrator_borrow_book_name_check_box->isChecked()},
-                {"text", ui_.administrator_user_text_edit->toPlainText()},
+                {"text", ui_.administrator_borrow_text_edit->toPlainText()},
                 {"page", s_a_borrow_page_num_},
                 {"is_reader", is_reader}
             }
