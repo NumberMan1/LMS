@@ -665,7 +665,7 @@ border-image:url(:/LMS_BG/picture/user_cell_widget_bg.svg)</string>
        </rect>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="administrator_book_page1">
        <widget class="QWidget" name="layoutWidget_4">

@@ -505,6 +505,11 @@ void LMSMainWindow::on_menu_sign_in_btn_clicked() {
 }
 
 void LMSMainWindow::on_user_login_sign_up_btn_clicked() {
+    ui_.user_sign_up_account_line_edit->setText("");
+    ui_.user_sign_up_name_edit->setText("");
+    ui_.user_sign_up_pwd_line_edit->setText("");
+    ui_.user_sign_up_re_pwd_edit->setText("");
+    ui_.user_sign_up_tel_edit->setText("");
     ui_.stacked_widget->setCurrentIndex(PageIndex::kUserSignUpPage);
 }
 
@@ -549,12 +554,14 @@ void LMSMainWindow::on_user_back_btn_clicked() {
 void LMSMainWindow::on_user_login_normal_btn_clicked() {
     auto reply = UserLogin(true);
     connect(reply, &QNetworkReply::readyRead, this,
-        [reply = reply, stack_widget = ui_.stacked_widget, p = this]() {
+        [reply = reply, stack_widget = ui_.stacked_widget, p = this,
+                borrow_table = ui_.user_borrow_table_widget]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
             qDebug() << json_doc;
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kNormalUserPage);
                 UserSingleton::Instance()->SetId(json_doc["user_id"].toInt());
+                p->ShowBorrowList(borrow_table, true);
             } else {
                 QMessageBox box{p};
                 box.setText("登录失败");
@@ -572,11 +579,13 @@ void LMSMainWindow::on_user_login_normal_btn_clicked() {
 void LMSMainWindow::on_user_login_administrator_btn_clicked() {
     auto reply = UserLogin(false);
     connect(reply, &QNetworkReply::readyRead, this,
-        [reply = reply, stack_widget = ui_.stacked_widget, p = this]() {
+        [reply = reply, stack_widget = ui_.stacked_widget, p = this,
+                borrow_table = ui_.administrator_borrow_table_widget]() {
             auto json_doc = QJsonDocument::fromJson(reply->readAll());
             if (json_doc["is_login"].toBool()) {
                 stack_widget->setCurrentIndex(kAdministratorPage);
                 UserSingleton::Instance()->SetId(json_doc["user_id"].toInt());
+                p->ShowBorrowList(borrow_table, false);
             } else {
                 QMessageBox box{p};
                 box.setText("登录失败");
@@ -636,13 +645,15 @@ void LMSMainWindow::on_user_sign_up_yse_btn_clicked() {
             {"user_tel", ui_.user_sign_up_tel_edit->text()}
         }
     );
+    qDebug() << json_doc["user_pwd"].toString();
     auto reply = SendPost(kUserURL, json_doc);
-    connect(reply, &QNetworkReply::readyRead,
-        this, [reply = reply]() {
+    connect(reply, &QNetworkReply::readyRead,  this,
+            [reply = reply, stack_page = ui_.stacked_widget]() {
             QJsonDocument json_doc = QJsonDocument::fromJson(reply->readAll());
             QMessageBox box;
             if (json_doc["is_inserted"].toBool()) {
                 box.setText("注册成功");
+                stack_page->setCurrentIndex(lms::kMenuPage);
             } else {
                 box.setText("注册失败");
             }
@@ -861,12 +872,21 @@ void LMSMainWindow::ShowBookList(QTableWidget* table_widget, bool is_reader) {
     QJsonDocument json_request_doc;
     if (is_reader) {
         // 检查数据是否合法
-        if ((ui_.search_text_edit->toPlainText() != "") &&
+        if ((!ui_.search_text_edit->toPlainText().isEmpty()) &&
             !(ui_.search_auther_check_box->isChecked() ||
                 ui_.search_id_check_box->isChecked() ||
                 ui_.search_name_check_box->isChecked())) {
             QMessageBox msg{ this };
             msg.setText("若要输入搜索内容则必须勾选匹配方式");
+            msg.exec();
+            return;
+        }
+        if ((ui_.search_text_edit->toPlainText().isEmpty()) &&
+            (ui_.search_auther_check_box->isChecked() ||
+                ui_.search_id_check_box->isChecked() ||
+                ui_.search_name_check_box->isChecked())) {
+            QMessageBox msg{ this };
+            msg.setText("如果有勾选匹配方式则必须输入搜索内容");
             msg.exec();
             return;
         }
@@ -882,12 +902,21 @@ void LMSMainWindow::ShowBookList(QTableWidget* table_widget, bool is_reader) {
         );
     }
     else {
-        if ((ui_.administrator_book_text_edit->toPlainText() != "") &&
+        if ((!ui_.administrator_book_text_edit->toPlainText().isEmpty()) &&
             !(ui_.administrator_book_auther_check_box->isChecked() ||
                 ui_.administrator_book_id_check_box->isChecked() ||
                 ui_.administrator_book_name_check_box->isChecked())) {
             QMessageBox msg{ this };
             msg.setText("若要输入搜索内容则必须勾选匹配方式");
+            msg.exec();
+            return;
+        }
+        if ((ui_.administrator_book_text_edit->toPlainText().isEmpty()) &&
+            (ui_.administrator_book_auther_check_box->isChecked() ||
+                ui_.administrator_book_id_check_box->isChecked() ||
+                ui_.administrator_book_name_check_box->isChecked())) {
+            QMessageBox msg{ this };
+            msg.setText("如果有勾选匹配方式则必须输入搜索内容");
             msg.exec();
             return;
         }
@@ -920,6 +949,15 @@ void LMSMainWindow::ShowUserList(QTableWidget* table) {
         msg.exec();
         return;
     }
+    if ((ui_.administrator_user_text_edit->toPlainText().isEmpty()) &&
+        (ui_.administrator_user_login_name_check_box->isChecked() ||
+            ui_.administrator_user_name_check_box->isChecked() ||
+            ui_.administrator_user_tel_check_box->isChecked())) {
+        QMessageBox msg{ this };
+        msg.setText("如果有勾选匹配方式则必须输入搜索内容");
+        msg.exec();
+        return;
+    }
     QJsonDocument json_doc;
     json_doc.setObject({
             {"action", "search"},
@@ -946,6 +984,14 @@ void LMSMainWindow::ShowBorrowList(QTableWidget* table_widget, bool is_reader) {
         msg.exec();
         return;
     }
+    if ((ui_.administrator_borrow_text_edit->toPlainText().isEmpty()) &&
+        (ui_.administrator_borrow_user_login_name_check_box->isChecked() ||
+            ui_.administrator_borrow_book_name_check_box->isChecked())) {
+        QMessageBox msg{ this };
+        msg.setText("如果有勾选匹配方式则必须输入搜索内容");
+        msg.exec();
+        return;
+    }
     // 发出请求
     QJsonDocument json_doc;
     if (is_reader) {
@@ -957,7 +1003,8 @@ void LMSMainWindow::ShowBorrowList(QTableWidget* table_widget, bool is_reader) {
                 {"is_book_name", false},
                 {"text", ""},
                 {"page", s_n_borrow_page_num_},
-                {"is_reader", is_reader}
+                {"is_reader", is_reader},
+                {"owner", UserSingleton::Instance()->GetId()}
             }
         );
     } else {
@@ -1004,7 +1051,7 @@ void LMSMainWindow::SetNextBtnDisable(const PageType& page) {
 QNetworkReply* LMSMainWindow::UserLogin(bool is_reader) {
     QJsonDocument json_doc;
     cjs::openssl::Hash h{ cjs::openssl::HashType::kSHA256Type };
-    h.Update(ui_.user_login_pwd_line_edit->text());
+    h.Update(ui_.user_login_pwd_line_edit->text().toStdString());
     json_doc.setObject(
         {
             {"action", "login"},
@@ -1013,6 +1060,7 @@ QNetworkReply* LMSMainWindow::UserLogin(bool is_reader) {
             {"user_pwd", h.Final().c_str()}
         }
     );
+    qDebug() << json_doc["user_pwd"].toString();
     auto reply = SendPost(kUserURL, json_doc);
     return reply;
 }
